@@ -451,6 +451,25 @@ func (p *RunningProcessor[T, B]) CloseContext(ctx context.Context) error {
 	return nil
 }
 
+// StopContext stop the processor.
+// This method does not process leftover batch.
+func (p *RunningProcessor[T, B]) StopContext(ctx context.Context) error {
+	if p.IsDisabled() {
+		return nil
+	}
+	p.closed <- struct{}{}
+	if p.concurrentLimiter != nil {
+		slog.Debug("waiting for concurrent workers to finish")
+		err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit)
+		if err != nil {
+			slog.Error("error waiting for concurrent workers to finish", slog.Any("err", err))
+			return err
+		}
+		p.concurrentLimiter.Release(p.concurrentLimit)
+	}
+	return nil
+}
+
 // DrainContext force process batch util the batch is empty.
 // This method always process the batch on caller thread.
 // ctx can be used to provide deadline for this method.
