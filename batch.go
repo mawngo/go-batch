@@ -225,10 +225,6 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], errorHandlers ...Re
 
 	processor.batch = p.init(p.maxItem)
 	if processor.IsDisabled() {
-		go func() {
-			slog.Debug("processor is disabled")
-			<-processor.closed
-		}()
 		return processor
 	}
 
@@ -435,6 +431,9 @@ func (p *RunningProcessor[T, B]) MustClose() {
 // This method will process the leftover branch on caller thread.
 // ctx can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) CloseContext(ctx context.Context) error {
+	if p.IsDisabled() {
+		return nil
+	}
 	p.closed <- struct{}{}
 	slog.Debug("waiting for leftover batch to finish")
 	if err := p.DrainContext(ctx); err != nil {
@@ -456,6 +455,9 @@ func (p *RunningProcessor[T, B]) CloseContext(ctx context.Context) error {
 // This method always process the batch on caller thread.
 // ctx can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) DrainContext(ctx context.Context) error {
+	if p.IsDisabled() {
+		return nil
+	}
 	waiting := true
 	for waiting {
 		select {
@@ -488,6 +490,9 @@ func (p *RunningProcessor[T, B]) DrainContext(ctx context.Context) error {
 // This method may process the batch on caller thread, depend on concurrent and block settings.
 // ctx can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) FlushContext(ctx context.Context) error {
+	if p.IsDisabled() {
+		return nil
+	}
 	select {
 	case <-p.full:
 		p.doProcessAndRelease(p.isBlockWhileProcessing)
