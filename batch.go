@@ -35,6 +35,9 @@ type Runner[T any, B any] interface {
 	// This method may process the left-over batch on caller thread.
 	// ctx can be used to provide deadline for this method.
 	CloseContext(ctx context.Context) error
+	// StopContext stop the processor.
+	// This method does not process leftover batch.
+	StopContext(ctx context.Context) error
 	// DrainContext force process batch util the batch is empty.
 	// This method may process the batch on caller thread.
 	// ctx can be used to provide deadline for this method.
