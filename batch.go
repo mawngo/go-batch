@@ -51,6 +51,16 @@ type Runner[T any, B any] interface {
 	Flush()
 }
 
+// SliceRunner shorthand for runner that merge item into slices.
+type SliceRunner[T any] interface {
+	Runner[T, []T]
+}
+
+// MapRunner shorthand for runner that merge item into maps.
+type MapRunner[K comparable, T any] interface {
+	Runner[T, map[K]T]
+}
+
 // RunningProcessor processor that is running, can process item.
 type RunningProcessor[T any, B any] struct {
 	ProcessorSetup[T, B]
