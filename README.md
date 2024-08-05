@@ -1,6 +1,6 @@
 # Go Batch
 
-Batch processing utilities for go project.
+Batch processing utilities for go projects.
 
 ## Usage
 

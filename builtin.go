@@ -47,7 +47,7 @@ func AddSelfToMapUsing[T any, K comparable](keyExtractor Extractor[T, K]) MergeT
 }
 
 // MergeToMapUsing create MergeToBatchFn that add item to map using key and value Extractor and apply Combine if key duplicated.
-// Original value will be passed as 1st parameter to Combine function.
+// The original value will be passed as 1st parameter to Combine function.
 func MergeToMapUsing[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V], combiner Combine[V]) MergeToBatchFn[map[K]V, T] {
 	return func(m map[K]V, t T) map[K]V {
 		key := keyExtractor(t)
@@ -62,7 +62,7 @@ func MergeToMapUsing[T any, K comparable, V any](keyExtractor Extractor[T, K], v
 }
 
 // MergeSelfToMapUsing create MergeToBatchFn that add self as item to map using key Extractor and apply Combine if key duplicated.
-// Original value will be passed as 1st parameter to Combine function.
+// The original value will be passed as 1st parameter to Combine function.
 func MergeSelfToMapUsing[T any, K comparable](keyExtractor Extractor[T, K], combiner Combine[T]) MergeToBatchFn[map[K]T, T] {
 	return func(m map[K]T, t T) map[K]T {
 		key := keyExtractor(t)
@@ -93,7 +93,7 @@ func InitType[T any](_ int64) T {
 	return *t
 }
 
-// SplitSliceEqually create a SplitBatchFn that split a slice into multiple equally chuck.
+// SplitSliceEqually create a SplitBatchFn that split a slice into multiple equal chuck.
 func SplitSliceEqually[T any, I Size](numberOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, _ int64) [][]T {
 		batches := make([][]T, numberOfChunk)

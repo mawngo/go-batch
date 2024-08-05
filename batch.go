@@ -20,9 +20,9 @@ type ProcessorSetup[T any, B any] struct {
 	split SplitBatchFn[B]
 }
 
-// Runner provide common methods of a RunningProcessor.
+// Runner provides common methods of a RunningProcessor.
 type Runner[T any, B any] interface {
-	// Put add item to processor.
+	// Put add item to the processor.
 	Put(item T)
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
@@ -61,7 +61,7 @@ type MapRunner[K comparable, T any] interface {
 	Runner[T, map[K]T]
 }
 
-// RunningProcessor processor that is running, can process item.
+// RunningProcessor processor that is running and can process item.
 type RunningProcessor[T any, B any] struct {
 	ProcessorSetup[T, B]
 	process       ProcessBatchFn[B]
@@ -94,13 +94,14 @@ type RecoverBatchFn[B any] func(B, int64, error) error
 // MergeToBatchFn function to add an item to batch.
 type MergeToBatchFn[B any, T any] func(B, T) B
 
-// Error is an error wrapper that support passing remaining items to handler.
+// Error is an error wrapper that supports passing remaining items to the RecoverBatchFn.
 type Error[B any] struct {
-	// Cause the error cause. If not specified then nil will be passed to next error handler.
+	// Cause the error cause. If not specified, then nil will be passed to the next error handler.
 	Cause error
-	// RemainingBatch the batch to pass to next handler. RemainingCount must be specified.
+	// RemainingBatch the batch to pass to the next handler. The RemainingCount must be specified.
 	RemainingBatch B
-	// RemainingCount number of items to pass to next handler. If RemainingCount = 0 and Cause != nil then pass the original batch and count to next handler.
+	// RemainingCount number of items to pass to the next handler.
+	// If RemainingCount = 0 and Cause != nil then pass the original batch and count to the next handler.
 	RemainingCount int64
 }
 
@@ -131,7 +132,7 @@ func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 // See Configure and Option for available configuration.
 // The result ProcessorSetup is in setup state. Call ProcessorSetup.Run with a handler to create a RunningProcessor that can accept item.
 // It is recommended to set at least maxWait or maxItem.
-// Default processor operate similarly to aggressive mode, use Configure to change it behaviour.
+// Default processor operates similarly to aggressive mode, use Configure to change its behavior.
 func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
 	c := ProcessorConfig{
 		maxWait: 0,
@@ -160,19 +161,19 @@ func NewIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K], 
 }
 
 // NewReplaceIdentityMapProcessor create processor that backed by a map, using item as value without extracting.
-// ProcessorSetup created by this construct handle duplicated key by keeping only last value.
+// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
 func NewReplaceIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K]) ProcessorSetup[T, map[K]T] {
 	return NewProcessor(InitMap[K, T], AddSelfToMapUsing(keyExtractor))
 }
 
 // NewReplaceMapProcessor create processor that backed by a map.
-// ProcessorSetup created by this construct handle duplicated key by keeping only last value.
+// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
 func NewReplaceMapProcessor[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], AddToMapUsing(keyExtractor, valueExtractor))
 }
 
 // Configure apply Option to this processor.
-// Each Configure call create a new processor.
+// Each Configure call creates a new processor.
 func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] {
 	for i := range options {
 		options[i](&p.ProcessorConfig)
@@ -201,9 +202,9 @@ func (p ProcessorSetup[T, B]) RunIgnoreError(process ProcessBatchIgnoreErrorFn[B
 }
 
 // WithSplitter split the batch into multiple smaller batch.
-// When concurrency > 0 and a SplitBatchFn is set, the processor will split the batch and process across multiple thread,
+// When concurrency > 0 and SplitBatchFn are set, the processor will split the batch and process across multiple thread,
 // otherwise the batch will be process on a single thread, and block when concurrency is reached.
-// This configuration may beneficial if you have very large batch that can be split into smaller batch and processed in parallel.
+// This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
 func (p ProcessorSetup[T, B]) WithSplitter(split SplitBatchFn[B]) ProcessorSetup[T, B] {
 	p.split = split
 	return p
@@ -339,8 +340,8 @@ func (p *RunningProcessor[T, B]) timedDispatch() {
 			case <-timer.C:
 				select {
 				case p.blocked <- struct{}{}:
-					// if empty then reset the timer.
-					// this avoids first item get processed immediately after long wait.
+					// if empty, then reset the timer.
+					// this avoids the first item getting processed immediately after a long wait.
 					if p.counter == 0 && !p.isHardMaxWait {
 						<-p.blocked
 						break
@@ -383,12 +384,12 @@ func (p *RunningProcessor[T, B]) waitUtilFullDispatch() {
 
 // IsDisabled whether the processor is disabled.
 // Disabled processor won't do batching, instead the process will be executed on caller.
-// All other setting is ignore when the processor is disabled.
+// All other settings are ignored when the processor is disabled.
 func (p *RunningProcessor[T, B]) IsDisabled() bool {
 	return p.maxItem == 0
 }
 
-// Put add item to processor.
+// Put add item to the processor.
 func (p *RunningProcessor[T, B]) Put(item T) {
 	if p.IsDisabled() {
 		batch := p.merge(p.init(1), item)
@@ -484,7 +485,7 @@ func (p *RunningProcessor[T, B]) StopContext(ctx context.Context) error {
 }
 
 // DrainContext force process batch util the batch is empty.
-// This method always process the batch on caller thread.
+// This method always processes the batch on caller thread.
 // ctx can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) DrainContext(ctx context.Context) error {
 	if p.IsDisabled() {
