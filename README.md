@@ -36,7 +36,8 @@ func main() {
 	// but you can always define your own initializer and merger.
 	processor := batch.NewProcessor(batch.InitSlice[int], batch.AddToSlice[int]).
 		// Configure the processor.
-		// The batch will be processed when the max item is reached or the max wait is reached.
+		// The batch will be processed when the max item is reached 
+		// or the max wait is reached.
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), 
 			batch.WithMaxWait(30*time.Second))
 
