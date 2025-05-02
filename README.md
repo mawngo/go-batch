@@ -26,8 +26,10 @@ func main() {
 	sum := int32(0)
 	// First create a batch.Processor by specifying the batch initializer and merger.
 	//
-	// Initializer will be called to create a new batch, here the batch.InitSlice[int] will create a slice.
-	// Merger will be called to add item to a batch, here the batch.AddToSlice[int] will add item to the slice.
+	// Initializer will be called to create a new batch, 
+	// here the batch.InitSlice[int] will create a slice.
+	// Merger will be called to add item to a batch, 
+	// here the batch.AddToSlice[int] will add item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built initializers and mergers for common data types,
@@ -35,9 +37,11 @@ func main() {
 	processor := batch.NewProcessor(batch.InitSlice[int], batch.AddToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached or the max wait is reached.
-		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), batch.WithMaxWait(30*time.Second))
+		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), 
+			batch.WithMaxWait(30*time.Second))
 
-	// Start the processor by specifying a handler to process the batch, and optionally error handlers.
+	// Start the processor by specifying a handler to process the batch, 
+	// and optionally error handlers.
 	// This will create a batch.Running processor that can accept item.
 	runningProcessor := processor.Run(summing(&sum))
 
