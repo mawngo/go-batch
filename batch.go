@@ -23,11 +23,21 @@ type ProcessorSetup[T any, B any] struct {
 // Runner provides common methods of a RunningProcessor.
 type Runner[T any, B any] interface {
 	// Put add item to the processor.
+	// This method can block until the processor is available for processing new batch,
+	// and may block indefinitely.
 	Put(item T)
+	// PutContext add item to the processor.
+	// If the context is canceled and the item is not added, then this method will return false.
+	// The context passed in only control the put step, after item added to the processor,
+	// the processing will not be canceled by this context.
+	PutContext(ctx context.Context, item T) bool
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
 	ItemCount() int64
+	// ItemCountContext return number of current item in processor.
+	// If the context is canceled, then this method will return approximate item count and false.
+	ItemCountContext(ctx context.Context) (int64, bool)
 	// Close stop the processor.
 	// The implementation of this method may vary, but it must never wait indefinitely.
 	Close() error
@@ -49,6 +59,9 @@ type Runner[T any, B any] interface {
 	// Flush force process the current batch.
 	// This method may process the batch on caller thread.
 	Flush()
+	// MustClose stop the processor and panic if there is any error.
+	// This method should only be used in tests.
+	MustClose()
 }
 
 // SliceRunner shorthand for runner that merge item into slices.
@@ -132,7 +145,7 @@ func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 // See Configure and Option for available configuration.
 // The result ProcessorSetup is in setup state. Call ProcessorSetup.Run with a handler to create a RunningProcessor that can accept item.
 // It is recommended to set at least maxWait or maxItem.
-// Default processor operates similarly to aggressive mode, use Configure to change its behavior.
+// By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
 func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
 	c := ProcessorConfig{
 		maxWait: 0,
@@ -183,9 +196,19 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 
 // ItemCount return number of current item in processor.
 func (p *RunningProcessor[T, B]) ItemCount() int64 {
-	p.blocked <- struct{}{}
+	cnt, _ := p.ItemCountContext(context.Background())
+	return cnt
+}
+
+// ItemCountContext return number of current item in processor.
+func (p *RunningProcessor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
+	select {
+	case p.blocked <- struct{}{}:
+	case <-ctx.Done():
+		return p.counter, false
+	}
 	defer func() { <-p.blocked }()
-	return p.counter
+	return p.counter, true
 }
 
 // ApproxItemCount return number of current item in processor.
@@ -390,14 +413,36 @@ func (p *RunningProcessor[T, B]) IsDisabled() bool {
 }
 
 // Put add item to the processor.
+// Put add item to the processor.
+// This method can block until the processor is available for processing new batch.
 func (p *RunningProcessor[T, B]) Put(item T) {
+	p.PutContext(nil, item)
+}
+
+// PutContext add item to the processor.
+func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
+	if ctx != nil && ctx.Err() != nil {
+		return false
+	}
+
 	if p.IsDisabled() {
 		batch := p.merge(p.init(1), item)
 		p.doProcess(batch, 1)
-		return
+		return true
 	}
 
-	p.blocked <- struct{}{}
+	// Select is slow, and most of the old codes are using Put without Context,
+	// so we allow nil context to preserve performance.
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return false
+		case p.blocked <- struct{}{}:
+		}
+	} else {
+		p.blocked <- struct{}{}
+	}
+
 	// Always release in case of panic.
 	defer func() {
 		if r := recover(); r != nil {
@@ -411,7 +456,7 @@ func (p *RunningProcessor[T, B]) Put(item T) {
 	if p.empty != nil {
 		select {
 		case p.empty <- struct{}{}:
-			// notify that batch is now not empty.
+			// notify that the batch is now not empty.
 		default:
 			// processing, no need to modify.
 		}
@@ -419,9 +464,10 @@ func (p *RunningProcessor[T, B]) Put(item T) {
 	if p.maxItem > -1 && p.counter >= p.maxItem {
 		// Block util processed.
 		p.full <- struct{}{}
-		return
+		return true
 	}
 	<-p.blocked
+	return true
 }
 
 // Close stop the processor.

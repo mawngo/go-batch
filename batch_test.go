@@ -509,3 +509,19 @@ func summingErr(p *int32) ProcessBatchFn[[]int] {
 		return nil
 	}
 }
+
+func TestPutContext(t *testing.T) {
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(5), WithMaxConcurrency(Unlimited)).
+		Run(func(_ []int, _ int64) error {
+			return nil
+		})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ok := processor.PutContext(ctx, 1)
+	if ok {
+		t.Fatalf("Cancelled context added to processor")
+	}
+	processor.MustClose()
+}
