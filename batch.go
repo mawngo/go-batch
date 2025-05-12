@@ -12,7 +12,7 @@ var _ Runner[any, any] = (*RunningProcessor[any, any])(nil)
 
 // ProcessorSetup batch processor that is in setup phase (not running)
 // You cannot put item into this processor, use Run to create a RunningProcessor that can accept item.
-// See ProcessorConfig for available options.
+// See [ProcessorConfig] for available options.
 type ProcessorSetup[T any, B any] struct {
 	ProcessorConfig
 	merge MergeToBatchFn[B, T]
@@ -20,7 +20,7 @@ type ProcessorSetup[T any, B any] struct {
 	split SplitBatchFn[B]
 }
 
-// Runner provides common methods of a RunningProcessor.
+// Runner provides common methods of a [RunningProcessor].
 type Runner[T any, B any] interface {
 	// Put add item to the processor.
 	// This method can block until the processor is available for processing new batch,
@@ -47,18 +47,18 @@ type Runner[T any, B any] interface {
 	Close() error
 	// CloseContext stop the processor.
 	// This method may process the left-over batch on caller thread.
-	// ctx can be used to provide deadline for this method.
+	// Context can be used to provide deadline for this method.
 	CloseContext(ctx context.Context) error
 	// StopContext stop the processor.
 	// This method does not process leftover batch.
 	StopContext(ctx context.Context) error
 	// DrainContext force process batch util the batch is empty.
 	// This method may process the batch on caller thread.
-	// ctx can be used to provide deadline for this method.
+	// Context can be used to provide deadline for this method.
 	DrainContext(ctx context.Context) error
 	// FlushContext force process the current batch.
 	// This method may process the batch on caller thread.
-	// ctx can be used to provide deadline for this method.
+	// Context can be used to provide deadline for this method.
 	FlushContext(ctx context.Context) error
 	// Flush force process the current batch.
 	// This method may process the batch on caller thread.
@@ -68,12 +68,12 @@ type Runner[T any, B any] interface {
 	MustClose()
 }
 
-// SliceRunner shorthand for runner that merge item into slices.
+// SliceRunner shorthand for [Runner] that merge item into slices.
 type SliceRunner[T any] interface {
 	Runner[T, []T]
 }
 
-// MapRunner shorthand for runner that merge item into maps.
+// MapRunner shorthand for [Runner] that merge item into maps.
 type MapRunner[K comparable, T any] interface {
 	Runner[T, map[K]T]
 }
@@ -111,21 +111,23 @@ type ProcessBatchIgnoreErrorFn[B any] func(B, int64)
 // The RecoverBatchFn must never panic.
 type RecoverBatchFn[B any] func(B, int64, error) error
 
-// LoggingErrorHandler default error handler, always included in RecoverBatchFn chain unless disable.
+// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
 	return err
 }
 
 // NewProcessor create a ProcessorSetup using specified functions.
-// See Configure and Option for available configuration.
-// The result ProcessorSetup is in setup state. Call ProcessorSetup.Run with a handler to create a RunningProcessor that can accept item.
-// It is recommended to set at least maxWait or maxItem.
+// See [ProcessorSetup.Configure] and [Option] for available configuration.
+// The result [ProcessorSetup] is in setup state.
+// Call [ProcessorSetup.Run] with a handler to create a [RunningProcessor] that can accept item.
+// It is recommended to set at least maxWait by [WithMaxWait] or maxItem by [WithMaxItem].
 // By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
 func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
 	c := ProcessorConfig{
 		maxWait: 0,
-		maxItem: Disabled,
+		// Default unlimited for maxItem.
+		maxItem: Unset,
 	}
 	return ProcessorSetup[T, B]{
 		ProcessorConfig: c,
@@ -144,12 +146,15 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 }
 
 // ItemCount return number of current item in processor.
+// This method will block the processor for accurate counting.
+// It is recommended to use [ItemCountContext] instead.
 func (p *RunningProcessor[T, B]) ItemCount() int64 {
 	cnt, _ := p.ItemCountContext(context.Background())
 	return cnt
 }
 
 // ItemCountContext return number of current item in processor.
+// If the context is canceled, then this method will return approximate item count and false.
 func (p *RunningProcessor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
 	select {
 	case p.blocked <- struct{}{}:
@@ -161,7 +166,7 @@ func (p *RunningProcessor[T, B]) ItemCountContext(ctx context.Context) (int64, b
 }
 
 // ApproxItemCount return number of current item in processor.
-// This method does not block, so the counter may not accurate.
+// This method does not block, so the counter may not be accurate.
 func (p *RunningProcessor[T, B]) ApproxItemCount() int64 {
 	return p.counter
 }
@@ -174,7 +179,8 @@ func (p ProcessorSetup[T, B]) RunIgnoreError(process ProcessBatchIgnoreErrorFn[B
 }
 
 // WithSplitter split the batch into multiple smaller batch.
-// When concurrency > 0 and SplitBatchFn are set, the processor will split the batch and process across multiple thread,
+// When concurrency > 0 and [SplitBatchFn] are set,
+// the processor will split the batch and process across multiple threads,
 // otherwise the batch will be process on a single thread, and block when concurrency is reached.
 // This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
 func (p ProcessorSetup[T, B]) WithSplitter(split SplitBatchFn[B]) ProcessorSetup[T, B] {
@@ -186,8 +192,8 @@ func (p ProcessorSetup[T, B]) isAggressiveMode() bool {
 	return p.aggressive || (p.maxWait == 0 && p.maxItem < 0)
 }
 
-// Run create a RunningProcessor that can accept item.
-// Accept a ProcessBatchFn and a RecoverBatchFn chain to process on error.
+// Run create a [RunningProcessor] that can accept item.
+// Accept a [ProcessBatchFn] and a [RecoverBatchFn] chain to process on error.
 func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], errorHandlers ...RecoverBatchFn[B]) *RunningProcessor[T, B] {
 	// if errorHandlers is empty, then add a default logging handler.
 	if !p.isDisableErrorLogging && len(errorHandlers) == 0 {
@@ -232,7 +238,9 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], errorHandlers ...Re
 	return processor
 }
 
-// continuousDispatch create a dispatcher routine that, when batch is empty, wait util it not empty, else process the remaining batch util it became empty.
+// continuousDispatch create a dispatcher routine that,
+// when batch is empty, wait util it not empty,
+// else process the remaining batch util it became empty.
 func (p *RunningProcessor[T, B]) continuousDispatch() {
 	if p.empty == nil {
 		// Should never happen.
@@ -242,7 +250,7 @@ func (p *RunningProcessor[T, B]) continuousDispatch() {
 		for {
 			select {
 			case p.blocked <- struct{}{}:
-				// if empty then try to wait util non-empty.
+				// if the batch is empty, then try to wait until non-empty.
 				if p.counter == 0 {
 					<-p.blocked
 					select {
@@ -273,20 +281,22 @@ func (p *RunningProcessor[T, B]) continuousDispatch() {
 	}()
 }
 
-// waitUtilFullContinuousDispatch create a dispatcher routine that, when batch is empty, wait util it full, else process the remaining batch util it became empty.
-// maxItem must be specified.
+// waitUtilFullContinuousDispatch create a dispatcher routine that,
+// when batch is empty, wait util it full,
+// else process the remaining batch util it became empty.
+// maxItem must be specified by [WithMaxItem].
 func (p *RunningProcessor[T, B]) waitUtilFullContinuousDispatch() {
 	go func() {
 		for {
 			select {
 			case p.blocked <- struct{}{}:
-				// if not empty then process anyway.
+				// if the batch is not empty, then process anyway.
 				if p.counter > 0 {
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
 					break
 				}
 				<-p.blocked
-				// if empty then wait util full to process.
+				// if the batch is empty then wait util full to process.
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
@@ -340,7 +350,7 @@ func (p *RunningProcessor[T, B]) timedDispatch() {
 }
 
 // waitUtilFullDispatch create a dispatcher routine that wait util the batch is full.
-// maxItem must be specified.
+// maxItem must be specified using [WithMaxItem].
 func (p *RunningProcessor[T, B]) waitUtilFullDispatch() {
 	go func() {
 		for {
@@ -362,8 +372,8 @@ func (p *RunningProcessor[T, B]) IsDisabled() bool {
 }
 
 // Put add item to the processor.
-// Put add item to the processor.
 // This method can block until the processor is available for processing new batch.
+// It is recommended to use [PutContext] instead.
 func (p *RunningProcessor[T, B]) Put(item T) {
 	//nolint:staticcheck
 	p.PutContext(nil, item)
@@ -424,6 +434,8 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 }
 
 // PutAll add all item to the processor.
+// This method will block until all items were put into the processor.
+// It is recommended to use [PutAllContext] instead.
 func (p *RunningProcessor[T, B]) PutAll(items []T) {
 	//nolint:staticcheck
 	p.PutAllContext(nil, items)
@@ -503,7 +515,9 @@ func (p *RunningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) i
 
 // Close stop the processor.
 // This method will process the leftover branch on caller thread.
-// Return error if maxCloseWait passed. See getCloseMaxWait for detail.
+// Return error if maxCloseWait passed.
+// Timeout can be configured by [WithMaxCloseWait].
+// See getCloseMaxWait for detail.
 func (p *RunningProcessor[T, B]) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), p.getCloseMaxWait())
 	defer cancel()
@@ -520,7 +534,7 @@ func (p *RunningProcessor[T, B]) MustClose() {
 
 // CloseContext stop the processor.
 // This method will process the leftover branch on caller thread.
-// ctx can be used to provide deadline for this method.
+// Context can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) CloseContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
@@ -598,7 +612,7 @@ func (p *RunningProcessor[T, B]) DrainContext(ctx context.Context) error {
 
 // FlushContext force process the current batch.
 // This method may process the batch on caller thread, depend on concurrent and block settings.
-// ctx can be used to provide deadline for this method.
+// Context can be used to provide deadline for this method.
 func (p *RunningProcessor[T, B]) FlushContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
@@ -623,6 +637,7 @@ func (p *RunningProcessor[T, B]) FlushContext(ctx context.Context) error {
 
 // Flush force process the current batch.
 // This method may process the batch on caller thread, depend on concurrent and block settings.
+// It is recommended to use [FlushContext] instead.
 func (p *RunningProcessor[T, B]) Flush() {
 	err := p.FlushContext(context.Background())
 	if err != nil {
@@ -642,6 +657,7 @@ func (p *RunningProcessor[T, B]) getCloseMaxWait() time.Duration {
 	return 15 * time.Second
 }
 
+// doProcessAndRelease process the batch and release the lock.
 func (p *RunningProcessor[T, B]) doProcessAndRelease(block bool) {
 	batch := p.batch
 	counter := p.counter
@@ -668,6 +684,7 @@ func (p *RunningProcessor[T, B]) doProcessAndRelease(block bool) {
 	p.doProcessConcurrency(batch, counter)
 }
 
+// doProcessConcurrency process the batch with concurrency if enabled.
 func (p *RunningProcessor[T, B]) doProcessConcurrency(batch B, counter int64) {
 	if p.concurrentLimiter == nil {
 		p.doProcess(batch, counter)
@@ -685,6 +702,7 @@ func (p *RunningProcessor[T, B]) doProcessConcurrency(batch B, counter int64) {
 	}
 }
 
+// doAcquireThreadAndProcess acquire a thread and process the batch.
 func (p *RunningProcessor[T, B]) doAcquireThreadAndProcess(batch B, counter int64) {
 	err := p.concurrentLimiter.Acquire(context.TODO(), 1)
 	if err != nil {
@@ -697,6 +715,7 @@ func (p *RunningProcessor[T, B]) doAcquireThreadAndProcess(batch B, counter int6
 	}()
 }
 
+// doProcess process the batch and passing any error to error handlers.
 func (p *RunningProcessor[T, B]) doProcess(batch B, counter int64) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -710,6 +729,7 @@ func (p *RunningProcessor[T, B]) doProcess(batch B, counter int64) {
 	}
 }
 
+// doHandleError execute [RecoverBatchFn] chain.
 func (p *RunningProcessor[T, B]) doHandleError(batch B, counter int64, err error) {
 	e := &Error[B]{}
 	for i := 0; err != nil && i < len(p.errorHandlers); i++ {

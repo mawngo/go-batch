@@ -1,6 +1,6 @@
 package batch
 
-// Error is an error wrapper that supports passing remaining items to the RecoverBatchFn.
+// Error is an error wrapper that supports passing remaining items to the [RecoverBatchFn].
 type Error[B any] struct {
 	// Cause the error cause. If not specified, then nil will be passed to the next error handler.
 	Cause error
@@ -19,7 +19,7 @@ func (e *Error[B]) String() string {
 	return e.Cause.Error()
 }
 
-// NewErrorWithRemaining create a *Error with remaining items.
+// NewErrorWithRemaining create a [*Error] with remaining items.
 func NewErrorWithRemaining[B any](err error, remainBatch B, count int64) error {
 	return &Error[B]{
 		Cause:          err,
