@@ -446,7 +446,10 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 	// Always release in case of panic.
 	defer func() {
 		if r := recover(); r != nil {
-			<-p.blocked
+			select {
+			case <-p.blocked:
+			default:
+			}
 			panic(r)
 		}
 	}()
