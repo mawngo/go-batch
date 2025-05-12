@@ -26,11 +26,15 @@ type Runner[T any, B any] interface {
 	// This method can block until the processor is available for processing new batch,
 	// and may block indefinitely.
 	Put(item T)
+	PutAll(items []T)
 	// PutContext add item to the processor.
 	// If the context is canceled and the item is not added, then this method will return false.
 	// The context passed in only control the put step, after item added to the processor,
 	// the processing will not be canceled by this context.
 	PutContext(ctx context.Context, item T) bool
+	// PutAllContext add all items to the processor.
+	// If the context is canceled, then this method will return the number of items added to the processor.
+	PutAllContext(ctx context.Context, items []T) int
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
@@ -471,6 +475,81 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 	}
 	<-p.blocked
 	return true
+}
+
+// PutAll add all item to the processor.
+func (p *RunningProcessor[T, B]) PutAll(items []T) {
+	p.PutAllContext(nil, items)
+}
+
+// PutAllContext add all items to the processor.
+// If the context is canceled, then this method will return the number of items added to the processor.
+func (p *RunningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) int {
+	if len(items) == 0 {
+		return 0
+	}
+	if p.IsDisabled() {
+		batch := p.init(int64(len(items)))
+		for i := range items {
+			batch = p.merge(batch, items[i])
+		}
+		p.doProcess(batch, 1)
+		return len(items)
+	}
+
+	// Always release in case of panic.
+	defer func() {
+		if r := recover(); r != nil {
+			select {
+			case <-p.blocked:
+			default:
+			}
+			panic(r)
+		}
+	}()
+
+	ok := 0
+	for ok < len(items) {
+		if ctx != nil && ctx.Err() != nil {
+			return ok
+		}
+
+		if ctx != nil {
+			select {
+			case <-ctx.Done():
+				return ok
+			case p.blocked <- struct{}{}:
+			}
+		} else {
+			p.blocked <- struct{}{}
+		}
+
+		available := int64(len(items) - ok)
+		if p.maxItem > -1 {
+			available = min(p.maxItem-p.counter, available)
+		}
+		for i := int64(ok); i < int64(ok)+available; i++ {
+			p.batch = p.merge(p.batch, items[i])
+		}
+		p.counter += available
+		ok += int(available)
+
+		if p.empty != nil {
+			select {
+			case p.empty <- struct{}{}:
+				// notify that the batch is now not empty.
+			default:
+				// processing, no need to modify.
+			}
+		}
+		if p.maxItem > -1 && p.counter >= p.maxItem {
+			// Block util processed.
+			p.full <- struct{}{}
+			continue
+		}
+		<-p.blocked
+	}
+	return ok
 }
 
 // Close stop the processor.
