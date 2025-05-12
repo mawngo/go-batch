@@ -111,40 +111,6 @@ type RecoverBatchFn[B any] func(B, int64, error) error
 // MergeToBatchFn function to add an item to batch.
 type MergeToBatchFn[B any, T any] func(B, T) B
 
-// Error is an error wrapper that supports passing remaining items to the RecoverBatchFn.
-type Error[B any] struct {
-	// Cause the error cause. If not specified, then nil will be passed to the next error handler.
-	Cause error
-	// RemainingBatch the batch to pass to the next handler. The RemainingCount must be specified.
-	RemainingBatch B
-	// RemainingCount number of items to pass to the next handler.
-	// If RemainingCount = 0 and Cause != nil then pass the original batch and count to the next handler.
-	RemainingCount int64
-}
-
-func (e *Error[B]) Error() string {
-	return e.Cause.Error()
-}
-
-func (e *Error[B]) String() string {
-	return e.Cause.Error()
-}
-
-// NewErrorWithRemaining create a *Error with remaining items.
-func NewErrorWithRemaining[B any](err error, remainBatch B, count int64) error {
-	return &Error[B]{
-		Cause:          err,
-		RemainingBatch: remainBatch,
-		RemainingCount: count,
-	}
-}
-
-// LoggingErrorHandler default error handler, always included in RecoverBatchFn chain unless disable.
-func LoggingErrorHandler[B any](_ B, count int64, err error) error {
-	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
-	return err
-}
-
 // NewProcessor create a ProcessorSetup using specified functions.
 // See Configure and Option for available configuration.
 // The result ProcessorSetup is in setup state. Call ProcessorSetup.Run with a handler to create a RunningProcessor that can accept item.
@@ -160,33 +126,6 @@ func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T])
 		init:            init,
 		merge:           merge,
 	}
-}
-
-// NewSliceProcessor create processor that backed by a slice.
-func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
-	return NewProcessor(InitSlice[T], AddToSlice[T])
-}
-
-// NewMapProcessor create processor that backed by a map.
-func NewMapProcessor[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V], combiner Combine[V]) ProcessorSetup[T, map[K]V] {
-	return NewProcessor(InitMap[K, V], MergeToMapUsing(keyExtractor, valueExtractor, combiner))
-}
-
-// NewIdentityMapProcessor create processor that backed by a map, using item as value without extracting.
-func NewIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K], combiner Combine[T]) ProcessorSetup[T, map[K]T] {
-	return NewProcessor(InitMap[K, T], MergeSelfToMapUsing(keyExtractor, combiner))
-}
-
-// NewReplaceIdentityMapProcessor create processor that backed by a map, using item as value without extracting.
-// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
-func NewReplaceIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K]) ProcessorSetup[T, map[K]T] {
-	return NewProcessor(InitMap[K, T], AddSelfToMapUsing(keyExtractor))
-}
-
-// NewReplaceMapProcessor create processor that backed by a map.
-// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
-func NewReplaceMapProcessor[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V]) ProcessorSetup[T, map[K]V] {
-	return NewProcessor(InitMap[K, V], AddToMapUsing(keyExtractor, valueExtractor))
 }
 
 // Configure apply Option to this processor.

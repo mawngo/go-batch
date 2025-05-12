@@ -124,3 +124,30 @@ func SplitSliceSizeLimit[T any, I Size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 		return batches
 	}
 }
+
+// NewSliceProcessor create processor that backed by a slice.
+func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
+	return NewProcessor(InitSlice[T], AddToSlice[T])
+}
+
+// NewMapProcessor create processor that backed by a map.
+func NewMapProcessor[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V], combiner Combine[V]) ProcessorSetup[T, map[K]V] {
+	return NewProcessor(InitMap[K, V], MergeToMapUsing(keyExtractor, valueExtractor, combiner))
+}
+
+// NewIdentityMapProcessor create processor that backed by a map, using item as value without extracting.
+func NewIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K], combiner Combine[T]) ProcessorSetup[T, map[K]T] {
+	return NewProcessor(InitMap[K, T], MergeSelfToMapUsing(keyExtractor, combiner))
+}
+
+// NewReplaceIdentityMapProcessor create processor that backed by a map, using item as value without extracting.
+// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
+func NewReplaceIdentityMapProcessor[T any, K comparable](keyExtractor Extractor[T, K]) ProcessorSetup[T, map[K]T] {
+	return NewProcessor(InitMap[K, T], AddSelfToMapUsing(keyExtractor))
+}
+
+// NewReplaceMapProcessor create processor that backed by a map.
+// ProcessorSetup created by this construct handles duplicated key by keeping only the last value.
+func NewReplaceMapProcessor[T any, K comparable, V any](keyExtractor Extractor[T, K], valueExtractor Extractor[T, V]) ProcessorSetup[T, map[K]V] {
+	return NewProcessor(InitMap[K, V], AddToMapUsing(keyExtractor, valueExtractor))
+}
