@@ -19,18 +19,31 @@ func TestMain(m *testing.M) {
 	)
 }
 
+func new1x10Slice() []int {
+	return []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+}
+
 func TestBatched(t *testing.T) {
 	sum := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -43,12 +56,21 @@ func TestBatchedSplit(t *testing.T) {
 			WithSplitter(SplitSliceEqually[int](m)).
 			Run(summing(&sum))
 
-		for i := 0; i < 100_000; i++ {
+		for i := 0; i < 50_000; i++ {
 			processor.Put(1)
 		}
+		for i := 0; i < 5_000; i++ {
+			processor.PutAll(new1x10Slice())
+		}
+		for i := 0; i < 50_000; i++ {
+			processor.PutContext(context.Background(), 1)
+		}
+		for i := 0; i < 5_000; i++ {
+			processor.PutAllContext(context.Background(), new1x10Slice())
+		}
 		processor.MustClose()
-		if sum != 100_000 {
-			t.Fatalf("sum is %d != 100_000", sum)
+		if sum != 200_000 {
+			t.Fatalf("sum is %d != 200_000", sum)
 		}
 	}
 }
@@ -59,12 +81,21 @@ func TestBatchedAllDisabled(t *testing.T) {
 		Configure(WithMaxItem(Disabled), WithMaxWait(Disabled)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -74,12 +105,21 @@ func TestConcurrentBatchedAllDisabled(t *testing.T) {
 		Configure(WithMaxItem(Disabled), WithMaxWait(Disabled), WithMaxConcurrency(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -89,12 +129,21 @@ func TestBatchedAggressive(t *testing.T) {
 		Configure(WithMaxItem(10), WithAggressiveMode()).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -104,12 +153,21 @@ func TestConcurrentBatchedAggressive(t *testing.T) {
 		Configure(WithMaxItem(10), WithAggressiveMode(), WithMaxConcurrency(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -119,12 +177,21 @@ func TestDisabled(t *testing.T) {
 		Configure(WithMaxItem(0)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -200,12 +267,21 @@ func TestBatchedDefault(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -215,12 +291,21 @@ func TestBatchedBlockWhileProcessing(t *testing.T) {
 		Configure(WithBlockWhileProcessing(), WithMaxItem(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -230,12 +315,21 @@ func TestBatchedConcurrentBlockWhileProcessing(t *testing.T) {
 		Configure(WithBlockWhileProcessing(), WithMaxItem(10), WithMaxConcurrency(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -245,12 +339,21 @@ func TestBatchedConcurrent(t *testing.T) {
 		Configure(WithMaxConcurrency(10), WithMaxItem(10)).
 		Run(summing(&sum))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -259,12 +362,21 @@ func TestBatchedNoWait(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithMaxWait(0)).
 		Run(summing(&sum))
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -327,12 +439,21 @@ func TestBatchedConcurrentNoWait(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxConcurrency(10), WithMaxItem(10), WithMaxWait(0)).
 		Run(summing(&sum))
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 500_000; i++ {
 		processor.Put(1)
 	}
+	for i := 0; i < 500_000; i++ {
+		processor.PutContext(context.Background(), 1)
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAll(new1x10Slice())
+	}
+	for i := 0; i < 50_000; i++ {
+		processor.PutAllContext(context.Background(), new1x10Slice())
+	}
 	processor.MustClose()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum)
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
 }
 
@@ -511,16 +632,30 @@ func summingErr(p *int32) ProcessBatchFn[[]int] {
 }
 
 func TestPutContext(t *testing.T) {
+	sum := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unlimited)).
-		Run(func(_ []int, _ int64) error {
-			return nil
-		})
+		Run(summing(&sum))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	ok := processor.PutContext(ctx, 1)
-	if ok {
+	if ok || sum > 0 {
+		t.Fatalf("Cancelled context added to processor")
+	}
+	processor.MustClose()
+}
+
+func TestPutAllContext(t *testing.T) {
+	sum := int32(0)
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(5), WithMaxConcurrency(Unlimited)).
+		Run(summing(&sum))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ok := processor.PutAllContext(ctx, []int{1, 2, 3})
+	if ok > 0 || sum > 0 {
 		t.Fatalf("Cancelled context added to processor")
 	}
 	processor.MustClose()
