@@ -27,16 +27,8 @@ func InitMap[K comparable, V any](i int64) map[K]V {
 // ExtractFn is a function to extract value from item.
 type ExtractFn[T any, V any] func(T) V
 
-// Extractor is an alias for [ExtractFn] for backward compatibility.
-// Deprecated: use [ExtractFn].
-type Extractor[T any, V any] = ExtractFn[T, V]
-
 // CombineFn is a function to combine two values in to one.
 type CombineFn[T any] func(T, T) T
-
-// Combine is an alias for [CombineFn] for backward compatibility.
-// Deprecated: use [CombineFn].
-type Combine[T any] = CombineFn[T]
 
 // AddToMapUsing create [MergeToBatchFn] that add item to map using key and value [ExtractFn].
 func AddToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V]) MergeToBatchFn[map[K]V, T] {
