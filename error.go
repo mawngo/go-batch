@@ -1,7 +1,5 @@
 package batch
 
-import "log/slog"
-
 // Error is an error wrapper that supports passing remaining items to the RecoverBatchFn.
 type Error[B any] struct {
 	// Cause the error cause. If not specified, then nil will be passed to the next error handler.
@@ -28,10 +26,4 @@ func NewErrorWithRemaining[B any](err error, remainBatch B, count int64) error {
 		RemainingBatch: remainBatch,
 		RemainingCount: count,
 	}
-}
-
-// LoggingErrorHandler default error handler, always included in RecoverBatchFn chain unless disable.
-func LoggingErrorHandler[B any](_ B, count int64, err error) error {
-	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
-	return err
 }

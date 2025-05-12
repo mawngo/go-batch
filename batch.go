@@ -95,21 +95,27 @@ type RunningProcessor[T any, B any] struct {
 // InitBatchFn function to create empty batch.
 type InitBatchFn[B any] func(int64) B
 
-// ProcessBatchFn function to process a batch.
-type ProcessBatchFn[B any] func(B, int64) error
-type ProcessBatchIgnoreErrorFn[B any] func(B, int64)
+// MergeToBatchFn function to add an item to batch.
+type MergeToBatchFn[B any, T any] func(B, T) B
 
 // SplitBatchFn function to split a batch into multiple smaller batches.
 // The SplitBatchFn must never panic.
 type SplitBatchFn[B any] func(B, int64) []B
+
+// ProcessBatchFn function to process a batch.
+type ProcessBatchFn[B any] func(B, int64) error
+type ProcessBatchIgnoreErrorFn[B any] func(B, int64)
 
 // RecoverBatchFn function to handle an error batch.
 // Each RecoverBatchFn can further return error to enable the next RecoverBatchFn in the chain.
 // The RecoverBatchFn must never panic.
 type RecoverBatchFn[B any] func(B, int64, error) error
 
-// MergeToBatchFn function to add an item to batch.
-type MergeToBatchFn[B any, T any] func(B, T) B
+// LoggingErrorHandler default error handler, always included in RecoverBatchFn chain unless disable.
+func LoggingErrorHandler[B any](_ B, count int64, err error) error {
+	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
+	return err
+}
 
 // NewProcessor create a ProcessorSetup using specified functions.
 // See Configure and Option for available configuration.
