@@ -5,8 +5,6 @@ Zero dependencies batch processing utilities for go projects.
 This library provides a general batch processor that can apply to various use cases like bulk insert to the database,
 bulk enqueue, precompute reports, ...
 
-There is a [less maintained java version](https://github.com/mawngo/batch4j).
-
 ## Usage
 
 Require go 1.24+
@@ -80,3 +78,6 @@ More usage can be found in [test](batch_test.go) and [examples](examples)
 
 This library provides both non-context `XXX` and context `XXXContext` variants.
 However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`)
+
+---
+There is a [java version of this library](https://github.com/mawngo/batch4j).
