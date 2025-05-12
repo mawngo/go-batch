@@ -1,6 +1,6 @@
 # Go Batch
 
-Zero dependencies batch processing utilities for go projects.
+batch processing utilities for go projects.
 
 This library provides a general batch processor that can apply to various use cases like bulk insert to the database,
 bulk enqueue, precompute reports, ...
