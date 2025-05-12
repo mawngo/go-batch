@@ -635,7 +635,7 @@ func (p *RunningProcessor[T, B]) getCloseMaxWait() time.Duration {
 	if p.maxCloseWait > 0 {
 		return p.maxCloseWait
 	}
-	// if maxWait is set then wait double the time.
+	// if maxWait is set, then wait double the time.
 	if p.maxWait > 0 {
 		return p.maxWait * 2
 	}
@@ -645,19 +645,25 @@ func (p *RunningProcessor[T, B]) getCloseMaxWait() time.Duration {
 func (p *RunningProcessor[T, B]) doProcessAndRelease(block bool) {
 	batch := p.batch
 	counter := p.counter
-	p.batch = p.init(p.maxItem)
-	p.counter = 0
 	if block {
 		defer func() {
 			if r := recover(); r != nil {
+				p.batch = p.init(p.maxItem)
+				p.counter = 0
 				<-p.blocked
 				panic(r)
 			}
 		}()
 		p.doProcessConcurrency(batch, counter)
+		p.batch = p.init(p.maxItem)
+		p.counter = 0
+		// Release after processing.
 		<-p.blocked
 		return
 	}
+	p.batch = p.init(p.maxItem)
+	p.counter = 0
+	// Release before processing.
 	<-p.blocked
 	p.doProcessConcurrency(batch, counter)
 }
