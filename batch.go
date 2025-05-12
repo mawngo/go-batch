@@ -486,6 +486,8 @@ func (p *RunningProcessor[T, B]) PutAll(items []T) {
 
 // PutAllContext add all items to the processor.
 // If the context is canceled, then this method will return the number of items added to the processor.
+// The processing order is the same as the input list,
+// so the output can also be used to determine the next item to process if you want to retry or continue processing.
 func (p *RunningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) int {
 	if len(items) == 0 {
 		return 0
