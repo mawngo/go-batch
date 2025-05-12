@@ -420,6 +420,7 @@ func (p *RunningProcessor[T, B]) IsDisabled() bool {
 // Put add item to the processor.
 // This method can block until the processor is available for processing new batch.
 func (p *RunningProcessor[T, B]) Put(item T) {
+	//nolint:staticcheck
 	p.PutContext(nil, item)
 }
 
@@ -479,6 +480,7 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 
 // PutAll add all item to the processor.
 func (p *RunningProcessor[T, B]) PutAll(items []T) {
+	//nolint:staticcheck
 	p.PutAllContext(nil, items)
 }
 

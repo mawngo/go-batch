@@ -1,14 +1,9 @@
-# This file contains all available configuration options
-# with their default values (in comments).
-#
-# This file is not a configuration example,
-# it contains the exhaustive configuration with explanations of the options.
-
-# Options for analysis running.
+version: 2
 run:
   concurrency: 4
   timeout: 1m
   issues-exit-code: 1
+output:
   show-stats: false
 
 linters:

@@ -89,9 +89,9 @@ func WithDisabledDefaultProcessErrorLog() Option {
 // Support fixed number and -1 (unlimited)
 // When set to unlimited, it will never block, and the batch handling behavior depends on WithMaxWait.
 // When set to 0, the processor will be DISABLED and item will be processed directly on caller thread without batching.
-func WithMaxItem[I Size](max I) Option {
+func WithMaxItem[I Size](maxItem I) Option {
 	return func(p *ProcessorConfig) {
-		p.maxItem = int64(max)
+		p.maxItem = int64(maxItem)
 	}
 }
 
