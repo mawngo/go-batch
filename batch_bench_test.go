@@ -8,7 +8,7 @@ import (
 
 func BenchmarkPut1Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})
@@ -22,7 +22,7 @@ func BenchmarkPut1Free(b *testing.B) {
 
 func BenchmarkPutContext1Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})
@@ -37,7 +37,7 @@ func BenchmarkPutContext1Free(b *testing.B) {
 
 func BenchmarkPut3Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})
@@ -53,7 +53,7 @@ func BenchmarkPut3Free(b *testing.B) {
 
 func BenchmarkPutAll3Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})
@@ -67,7 +67,7 @@ func BenchmarkPutAll3Free(b *testing.B) {
 
 func BenchmarkPutContext3Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})
@@ -84,7 +84,7 @@ func BenchmarkPutContext3Free(b *testing.B) {
 
 func BenchmarkPutAllContext3Free(b *testing.B) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unlimited), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 		Run(func(_ []int, _ int64) error {
 			return nil
 		})

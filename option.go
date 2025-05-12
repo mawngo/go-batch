@@ -6,7 +6,12 @@ import (
 	"time"
 )
 
+// Disabled are special values for WithMaxWait.
+// Deprecated: use [Unset].
 const Disabled = -1
+
+// Unlimited are special values for WithMaxItem.
+// Deprecated: use [Unset].
 const Unlimited = -1
 
 // Unset is a special value for various [Option] functions, usually meaning unrestricted, unlimited, or disable.
