@@ -96,3 +96,49 @@ func BenchmarkPutAllContext3Free(b *testing.B) {
 	})
 	processor.MustClose()
 }
+
+func BenchmarkPutContext1Full(b *testing.B) {
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Run(func(_ []int, _ int64) error {
+			return nil
+		})
+	b.Run("put", func(b *testing.B) {
+		for b.Loop() {
+			processor.PutContext(context.Background(), 1)
+		}
+	})
+	processor.MustClose()
+}
+
+func BenchmarkPutContext3Full(b *testing.B) {
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Run(func(_ []int, _ int64) error {
+			return nil
+		})
+	ctx := context.Background()
+	b.Run("put", func(b *testing.B) {
+		for b.Loop() {
+			processor.PutContext(ctx, 1)
+			processor.PutContext(ctx, 1)
+			processor.PutContext(ctx, 1)
+		}
+	})
+	processor.MustClose()
+}
+
+func BenchmarkPutAllContext3Full(b *testing.B) {
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
+		Run(func(_ []int, _ int64) error {
+			return nil
+		})
+	ctx := context.Background()
+	b.Run("put", func(b *testing.B) {
+		for b.Loop() {
+			processor.PutAllContext(ctx, []int{1, 1, 1})
+		}
+	})
+	processor.MustClose()
+}
