@@ -147,7 +147,7 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 
 // ItemCount return number of current item in processor.
 // This method will block the processor for accurate counting.
-// It is recommended to use [ItemCountContext] instead.
+// It is recommended to use [RunningProcessor.ItemCountContext] instead.
 func (p *RunningProcessor[T, B]) ItemCount() int64 {
 	cnt, _ := p.ItemCountContext(context.Background())
 	return cnt
@@ -373,7 +373,7 @@ func (p *RunningProcessor[T, B]) IsDisabled() bool {
 
 // Put add item to the processor.
 // This method can block until the processor is available for processing new batch.
-// It is recommended to use [PutContext] instead.
+// It is recommended to use [RunningProcessor.PutContext] instead.
 func (p *RunningProcessor[T, B]) Put(item T) {
 	//nolint:staticcheck
 	p.PutContext(nil, item)
@@ -435,7 +435,7 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 
 // PutAll add all item to the processor.
 // This method will block until all items were put into the processor.
-// It is recommended to use [PutAllContext] instead.
+// It is recommended to use [RunningProcessor.PutAllContext] instead.
 func (p *RunningProcessor[T, B]) PutAll(items []T) {
 	//nolint:staticcheck
 	p.PutAllContext(nil, items)
@@ -637,7 +637,7 @@ func (p *RunningProcessor[T, B]) FlushContext(ctx context.Context) error {
 
 // Flush force process the current batch.
 // This method may process the batch on caller thread, depend on concurrent and block settings.
-// It is recommended to use [FlushContext] instead.
+// It is recommended to use [RunningProcessor.FlushContext] instead.
 func (p *RunningProcessor[T, B]) Flush() {
 	err := p.FlushContext(context.Background())
 	if err != nil {
