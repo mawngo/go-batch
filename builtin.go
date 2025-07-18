@@ -80,6 +80,36 @@ func MergeSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], comb
 	}
 }
 
+// KeyVal is a tuple of key and value.
+type KeyVal[K any, V any] struct {
+	key K
+	val V
+}
+
+// AddKeyValToMapUsing create [MergeToBatchFn] that add item to map using [KeyVal] [ExtractFn].
+func AddKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]]) MergeToBatchFn[map[K]V, T] {
+	return func(m map[K]V, t T) map[K]V {
+		kv := extractor(t)
+		m[kv.key] = kv.val
+		return m
+	}
+}
+
+// MergeKeyValToMapUsing create [MergeToBatchFn]
+// that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
+// The original value will be passed as 1st parameter to the [CombineFn].
+func MergeKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
+	return func(m map[K]V, t T) map[K]V {
+		kv := extractor(t)
+		if v, ok := m[kv.key]; ok {
+			m[kv.key] = combiner(v, kv.val)
+			return m
+		}
+		m[kv.key] = kv.val
+		return m
+	}
+}
+
 // InitChan is an [InitBatchFn] that allocate a channel.
 // this should not be used with unbounded processor (maxItem < 0).
 func InitChan[T any](i int64) chan T {
