@@ -660,3 +660,35 @@ func TestPutAllContext(t *testing.T) {
 	}
 	processor.MustClose()
 }
+
+func TestMergeContext(t *testing.T) {
+	sum := int32(0)
+	merger := AddToSlice[int]
+	processor := NewProcessor(InitSlice[int], func(ints []int, i int) []int { return nil }).
+		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
+		Run(summing(&sum))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ok := processor.MergeContext(ctx, 1, merger)
+	if ok || sum > 0 {
+		t.Fatalf("Cancelled context added to processor")
+	}
+	processor.MustClose()
+}
+
+func TestMergeAllContext(t *testing.T) {
+	sum := int32(0)
+	merger := AddToSlice[int]
+	processor := NewProcessor(InitSlice[int], func(ints []int, i int) []int { return nil }).
+		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
+		Run(summing(&sum))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ok := processor.MergeAllContext(ctx, []int{1, 2, 3}, merger)
+	if ok > 0 || sum > 0 {
+		t.Fatalf("Cancelled context added to processor")
+	}
+	processor.MustClose()
+}

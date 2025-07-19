@@ -18,6 +18,7 @@ type ProcessorSetup[T any, B any] struct {
 	merge MergeToBatchFn[B, T]
 	init  InitBatchFn[B]
 	split SplitBatchFn[B]
+	count CountBatchFn[B]
 }
 
 // Runner provides common methods of a [RunningProcessor].
@@ -35,6 +36,21 @@ type Runner[T any, B any] interface {
 	// PutAllContext add all items to the processor.
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	PutAllContext(ctx context.Context, items []T) int
+
+	// Merge add item to the processor using merge function.
+	// This method can block until the processor is available for processing new batch,
+	// and may block indefinitely.
+	Merge(item T, merge MergeToBatchFn[B, T])
+	MergeAll(items []T, merge MergeToBatchFn[B, T])
+	// MergeContext add item to the processor using merge function.
+	// If the context is canceled and the item is not added, then this method will return false.
+	// The context passed in only control the put step, after item added to the processor,
+	// the processing will not be canceled by this context.
+	MergeContext(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool
+	// MergeAllContext add all items to the processor using merge function.
+	// If the context is canceled, then this method will return the number of items added to the processor.
+	MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
+
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
@@ -111,6 +127,9 @@ type ProcessBatchIgnoreErrorFn[B any] func(B, int64)
 // The RecoverBatchFn must never panic.
 type RecoverBatchFn[B any] func(B, int64, error) error
 
+// CountBatchFn function to count the number of items in batch.
+type CountBatchFn[B any] func(B, int64) int64
+
 // LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
@@ -185,6 +204,12 @@ func (p ProcessorSetup[T, B]) RunIgnoreError(process ProcessBatchIgnoreErrorFn[B
 // This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
 func (p ProcessorSetup[T, B]) WithSplitter(split SplitBatchFn[B]) ProcessorSetup[T, B] {
 	p.split = split
+	return p
+}
+
+// WithCounter provide alternate function to count the number of items in batch.
+func (p ProcessorSetup[T, B]) WithCounter(count CountBatchFn[B]) ProcessorSetup[T, B] {
+	p.count = count
 	return p
 }
 
@@ -381,12 +406,25 @@ func (p *RunningProcessor[T, B]) Put(item T) {
 
 // PutContext add item to the processor.
 func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
+	return p.MergeContext(ctx, item, p.merge)
+}
+
+// Merge add item to the processor.
+// This method can block until the processor is available for processing new batch.
+// It is recommended to use [RunningProcessor.MergeContext] instead.
+func (p *RunningProcessor[T, B]) Merge(item T, merge MergeToBatchFn[B, T]) {
+	//nolint:staticcheck
+	p.MergeContext(nil, item, merge)
+}
+
+// MergeContext add item to the processor using merge function.
+func (p *RunningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool {
 	if ctx != nil && ctx.Err() != nil {
 		return false
 	}
 
 	if p.IsDisabled() {
-		batch := p.merge(p.init(1), item)
+		batch := merge(p.init(1), item)
 		p.doProcess(batch, 1)
 		return true
 	}
@@ -414,8 +452,12 @@ func (p *RunningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 		}
 	}()
 
-	p.batch = p.merge(p.batch, item)
-	p.counter++
+	p.batch = merge(p.batch, item)
+	if p.count != nil {
+		p.counter = p.count(p.batch, p.counter)
+	} else {
+		p.counter++
+	}
 	if p.empty != nil {
 		select {
 		case p.empty <- struct{}{}:
@@ -446,13 +488,29 @@ func (p *RunningProcessor[T, B]) PutAll(items []T) {
 // The processing order is the same as the input list,
 // so the output can also be used to determine the next item to process if you want to retry or continue processing.
 func (p *RunningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) int {
+	return p.MergeAllContext(ctx, items, p.merge)
+}
+
+// MergeAll add all item to the processor using merge function.
+// This method will block until all items were put into the processor.
+// It is recommended to use [RunningProcessor.MergeAllContext] instead.
+func (p *RunningProcessor[T, B]) MergeAll(items []T, merge MergeToBatchFn[B, T]) {
+	//nolint:staticcheck
+	p.MergeAllContext(nil, items, merge)
+}
+
+// MergeAllContext add all items to the processor using merge function.
+// If the context is canceled, then this method will return the number of items added to the processor.
+// The processing order is the same as the input list,
+// so the output can also be used to determine the next item to process if you want to retry or continue processing.
+func (p *RunningProcessor[T, B]) MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int {
 	if len(items) == 0 {
 		return 0
 	}
 	if p.IsDisabled() {
 		batch := p.init(int64(len(items)))
 		for i := range items {
-			batch = p.merge(batch, items[i])
+			batch = merge(batch, items[i])
 		}
 		p.doProcess(batch, 1)
 		return len(items)
@@ -490,7 +548,7 @@ func (p *RunningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) i
 			available = min(p.maxItem-p.counter, available)
 		}
 		for i := int64(ok); i < int64(ok)+available; i++ {
-			p.batch = p.merge(p.batch, items[i])
+			p.batch = merge(p.batch, items[i])
 		}
 		p.counter += available
 		ok += int(available)
