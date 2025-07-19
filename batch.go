@@ -550,7 +550,11 @@ func (p *RunningProcessor[T, B]) MergeAllContext(ctx context.Context, items []T,
 		for i := int64(ok); i < int64(ok)+available; i++ {
 			p.batch = merge(p.batch, items[i])
 		}
-		p.counter += available
+		if p.count != nil {
+			p.counter = p.count(p.batch, p.counter)
+		} else {
+			p.counter += available
+		}
 		ok += int(available)
 
 		if p.empty != nil {
