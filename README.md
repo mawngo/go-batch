@@ -76,7 +76,7 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 
 More usage can be found in [test](batch_test.go) and [examples](examples)
 
-### Context And Cancellation
+### Context and Cancellation
 
 This library provides both non-context `XXX` and context `XXXContext` variants.
 However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`)

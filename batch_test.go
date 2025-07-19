@@ -664,7 +664,7 @@ func TestPutAllContext(t *testing.T) {
 func TestMergeContext(t *testing.T) {
 	sum := int32(0)
 	merger := AddToSlice[int]
-	processor := NewProcessor(InitSlice[int], func(ints []int, i int) []int { return nil }).
+	processor := NewProcessor(InitSlice[int], func(_ []int, i int) []int { return nil }).
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(summing(&sum))
 
@@ -680,7 +680,7 @@ func TestMergeContext(t *testing.T) {
 func TestMergeAllContext(t *testing.T) {
 	sum := int32(0)
 	merger := AddToSlice[int]
-	processor := NewProcessor(InitSlice[int], func(ints []int, i int) []int { return nil }).
+	processor := NewProcessor(InitSlice[int], func(_ []int, i int) []int { return nil }).
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(summing(&sum))
 
