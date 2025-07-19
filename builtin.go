@@ -1,5 +1,13 @@
 package batch
 
+import "context"
+
+// Future is a future that can be used to get the result of a task.
+type Future[T any] interface {
+	Get() (T, error)
+	GetContext(ctx context.Context) (T, error)
+}
+
 // InitSlice is [InitBatchFn] that allocate a slice.
 func InitSlice[T any](i int64) []T {
 	if i < 0 {

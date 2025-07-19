@@ -5,13 +5,15 @@ batch processing utilities for go projects.
 This library provides a general batch processor that can apply to various use cases like bulk insert to the database,
 bulk enqueue, precompute reports, ...
 
-## Usage
+## Installation
 
 Require go 1.24+
 
 ```shell
 go get github.com/mawngo/go-batch
 ```
+
+## Usage
 
 ### Example
 
@@ -81,10 +83,17 @@ However, it is recommended to use context variants, as non-context variants can 
 
 Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
 batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
-the batch. 
+the batch.
 
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
+
+### Waiting for an item to be processed
+
+The processor does not provide a method to wait for or get the result of processing an item, however,
+you can use the `batch.Future` with custom batch to implement your own waiting logic.
+
+See [future example](examples/future/main.go)
 
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).
