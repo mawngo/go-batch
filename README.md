@@ -79,5 +79,12 @@ More usage can be found in [test](batch_test.go) and [examples](examples)
 This library provides both non-context `XXX` and context `XXXContext` variants.
 However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`)
 
+Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
+batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
+the batch. 
+
+You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
+as demonstrated in [custom context control example](examples/ctxctrl/main.go).
+
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).
