@@ -15,16 +15,22 @@ go test -bench=BenchmarkPut -benchmem -benchtime=1s -run=^$
 goos: windows
 goarch: amd64
 pkg: github.com/mawngo/go-batch
-cpu: AMD Ryzen 9 7900 12-Core Processor             
-BenchmarkPut1Free/put-24                42995187                26.08 ns/op           43 B/op          0 allocs/op
-BenchmarkPutContext1Free/put-24         36235275                32.07 ns/op           41 B/op          0 allocs/op
-BenchmarkPut3Free/put-24                16574997                73.87 ns/op          141 B/op          0 allocs/op
-BenchmarkPutAll3Free/put-24             37882255                33.78 ns/op          121 B/op          0 allocs/op
-BenchmarkPutContext3Free/put-24         12219908                94.60 ns/op          123 B/op          0 allocs/op
-BenchmarkPutAllContext3Free/put-24              26843595                40.83 ns/op          136 B/op          0 allocs/op
-BenchmarkPutContext1Full/put-24                  1000000              1113 ns/op             320 B/op          5 allocs/op
-BenchmarkPutContext3Full/put-24                   370693              3379 ns/op             960 B/op         15 allocs/op
-BenchmarkPutAllContext3Full/put-24                337036              3418 ns/op             960 B/op         15 allocs/op
+cpu: AMD Ryzen 9 7900 12-Core Processor
+BenchmarkPut/PutContext_free1-24                32585672                34.36 ns/op           46 B/op          0 allocs/op
+BenchmarkPut/PutContext_free3-24                12240550               100.8 ns/op           122 B/op          0 allocs/op
+BenchmarkPut/Put_free1-24                       47440204                23.95 ns/op           49 B/op          0 allocs/op
+BenchmarkPut/Put_free3-24                       14629953                68.66 ns/op          128 B/op          0 allocs/op
+BenchmarkPut/PutContext_full1-24                 1000000              1054 ns/op             320 B/op          5 allocs/op
+BenchmarkPut/PutContext_full3-24                  368942              3249 ns/op             960 B/op         15 allocs/op
+BenchmarkPut/Put_full1-24                        1000000              1042 ns/op             320 B/op          5 allocs/op
+BenchmarkPut/Put_full3-24                         366759              3131 ns/op             960 B/op         15 allocs/op
+BenchmarkPutAll/PutAll_free3-24                 35902130                33.77 ns/op          127 B/op          0 allocs/op
+BenchmarkPutAll/PutAllContext_free3-24          28360546                40.48 ns/op          129 B/op          0 allocs/op
+BenchmarkPutAll/PutAllContext_full3-24            364135              3276 ns/op             960 B/op         15 allocs/op
+BenchmarkPutUnderLoad/PutContext_1000x100x4-24              2929            406602 ns/op           96105 B/op        201 allocs/op
+BenchmarkPutUnderLoad/PutContext_1000x100-24                2514            485473 ns/op           89601 B/op        100 allocs/op
+BenchmarkPutUnderLoad/Put_1000x100x4-24                     4164            290593 ns/op           96065 B/op        201 allocs/op
+BenchmarkPutUnderLoad/Put_1000x100-24                       3356            367640 ns/op           89601 B/op        100 allocs/op
 PASS
-ok      github.com/mawngo/go-batch      10.862s
+ok      github.com/mawngo/go-batch      17.591s
 ```
