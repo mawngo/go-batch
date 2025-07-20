@@ -9,7 +9,7 @@ var mu sync.Mutex
 
 func main() {
 	count := make(map[int]int)
-	processor := batch.NewReplaceIdentityMapProcessor[int, int](mod2).
+	processor := batch.NewIdentityMapProcessor[int, int](mod2, nil).
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
 		Run(summingValByKey(count))
 	for i := 0; i < 1_000_000; i++ {
