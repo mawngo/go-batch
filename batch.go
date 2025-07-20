@@ -68,6 +68,15 @@ type Processor[T any, B any] interface {
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
+	// Peek access the current batch using provided function.
+	// This method can block until the processor is available.
+	// It is recommended to use [Processor.PeekContext] instead.
+	// This method does count as processing the batch, the batch will still be processed.
+	Peek(reader ProcessBatchFn[B]) error
+	// PeekContext access the current batch using provided function.
+	// This method does count as processing the batch, the batch will still be processed.
+	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
+
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
@@ -443,6 +452,54 @@ func (p *runningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge
 	}
 	<-p.blocked
 	return true
+}
+
+// Peek access the current batch using provided function.
+// This method can block until the processor is available.
+// It is recommended to use [Processor.PeekContext] instead.
+// This method does count as processing the batch, the batch will still be processed.
+func (p *runningProcessor[T, B]) Peek(reader ProcessBatchFn[B]) error {
+	//nolint:staticcheck
+	return p.PeekContext(nil, reader)
+}
+
+// PeekContext access the current batch using provided function.
+// This method does count as processing the batch, the batch will still be processed.
+func (p *runningProcessor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error {
+	if ctx != nil && ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if p.IsDisabled() {
+		return reader(p.init(1), 0)
+	}
+
+	// Select is slow, and most of the old codes are using Put without Context,
+	// so we allow nil context to preserve performance.
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case p.blocked <- struct{}{}:
+		}
+	} else {
+		p.blocked <- struct{}{}
+	}
+
+	// Always release in case of panic.
+	defer func() {
+		if r := recover(); r != nil {
+			select {
+			case <-p.blocked:
+			default:
+			}
+			panic(r)
+		}
+	}()
+
+	err := reader(p.batch, p.counter)
+	<-p.blocked
+	return err
 }
 
 // PutAll add all item to the processor.

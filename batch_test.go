@@ -746,3 +746,35 @@ func TestMergeAllContext(t *testing.T) {
 		t.Fatalf("error closing processor: %v", err)
 	}
 }
+
+func TestPeek(t *testing.T) {
+	sum := int32(0)
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(10), WithMaxWait(Unset)).
+		Run(summing(&sum))
+	for i := 0; i < 9; i++ {
+		processor.Put(1)
+	}
+
+	err := processor.Peek(func(ints []int, _ int64) error {
+		if len(ints) != 9 {
+			t.Fatal("Peek return inconsistent item count")
+		}
+		// Modify current batch.
+		// This should work as the function is synchronized.
+		ints[0] = 2
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if processor.ItemCount() != 9 {
+		t.Fatal("Peek trigger processes")
+	}
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
+	if sum != 10 {
+		t.Fatalf("sum is %d != 10", sum)
+	}
+}
