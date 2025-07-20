@@ -97,9 +97,6 @@ type Processor[T any, B any] interface {
 	// This method may process the batch on caller thread.
 	// It is recommended to use [Processor.FlushContext] instead.
 	Flush()
-	// MustClose stop the processor and panic if there is any error.
-	// This method should only be used in tests.
-	MustClose()
 }
 
 // SliceProcessor alias for [Processor] that merge item into slices.
@@ -557,14 +554,6 @@ func (p *runningProcessor[T, B]) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), p.getCloseMaxWait())
 	defer cancel()
 	return p.CloseContext(ctx)
-}
-
-// MustClose stop the processor without deadline.
-func (p *runningProcessor[T, B]) MustClose() {
-	err := p.CloseContext(context.Background())
-	if err != nil {
-		panic(err)
-	}
 }
 
 // CloseContext stop the processor.

@@ -17,7 +17,9 @@ func BenchmarkPut(b *testing.B) {
 		for b.Loop() {
 			processor.PutContext(ctx, 1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutContext free3", func(b *testing.B) {
@@ -32,7 +34,9 @@ func BenchmarkPut(b *testing.B) {
 			processor.PutContext(ctx, 1)
 			processor.PutContext(ctx, 1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put free1", func(b *testing.B) {
@@ -44,7 +48,9 @@ func BenchmarkPut(b *testing.B) {
 		for b.Loop() {
 			processor.Put(1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put free3", func(b *testing.B) {
@@ -58,7 +64,9 @@ func BenchmarkPut(b *testing.B) {
 			processor.Put(1)
 			processor.Put(1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutContext full1", func(b *testing.B) {
@@ -71,7 +79,9 @@ func BenchmarkPut(b *testing.B) {
 		for b.Loop() {
 			processor.PutContext(ctx, 1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutContext full3", func(b *testing.B) {
@@ -86,7 +96,9 @@ func BenchmarkPut(b *testing.B) {
 			processor.PutContext(ctx, 1)
 			processor.PutContext(ctx, 1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put full1", func(b *testing.B) {
@@ -98,7 +110,9 @@ func BenchmarkPut(b *testing.B) {
 		for b.Loop() {
 			processor.Put(1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put full3", func(b *testing.B) {
@@ -112,7 +126,9 @@ func BenchmarkPut(b *testing.B) {
 			processor.Put(1)
 			processor.Put(1)
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 }
 
@@ -126,7 +142,9 @@ func BenchmarkPutAll(b *testing.B) {
 		for b.Loop() {
 			processor.PutAll([]int{1, 1, 1})
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutAllContext free3", func(b *testing.B) {
@@ -139,7 +157,9 @@ func BenchmarkPutAll(b *testing.B) {
 		for b.Loop() {
 			processor.PutAllContext(ctx, []int{1, 1, 1})
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutAllContext full3", func(b *testing.B) {
@@ -152,7 +172,9 @@ func BenchmarkPutAll(b *testing.B) {
 		for b.Loop() {
 			processor.PutAllContext(ctx, []int{1, 1, 1})
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 }
 
@@ -172,7 +194,9 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 				processor.PutContext(ctx, 1)
 			}
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("PutContext 1000x100", func(b *testing.B) {
@@ -189,7 +213,9 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 				processor.PutContext(ctx, 1)
 			}
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put 1000x100x4", func(b *testing.B) {
@@ -206,7 +232,9 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 				processor.Put(1)
 			}
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 
 	b.Run("Put 1000x100", func(b *testing.B) {
@@ -222,6 +250,8 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 				processor.Put(1)
 			}
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			b.Fatalf("error closing processor: %v", err)
+		}
 	})
 }

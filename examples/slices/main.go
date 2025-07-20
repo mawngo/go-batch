@@ -13,7 +13,9 @@ func main() {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		panic(err)
+	}
 	if sum != 1_000_000 {
 		panic("sum is not 1_000_000")
 	}

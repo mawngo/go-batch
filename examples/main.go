@@ -32,7 +32,9 @@ func main() {
 	// Remember to close the running processor before your application stopped.
 	// Closing will force the processor to process the left-over item,
 	// any item added after closing is not guarantee to be processed.
-	runningProcessor.MustClose()
+	if err := runningProcessor.Close(); err != nil {
+		panic(err)
+	}
 	if sum != 1_000_000 {
 		panic("sum is not 1_000_000")
 	}

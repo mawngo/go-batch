@@ -41,7 +41,9 @@ func TestBatched(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -67,7 +69,9 @@ func TestBatchedSplit(t *testing.T) {
 		for i := 0; i < 5_000; i++ {
 			processor.PutAllContext(context.Background(), new1x10Slice())
 		}
-		processor.MustClose()
+		if err := processor.Close(); err != nil {
+			t.Fatalf("error closing processor: %v", err)
+		}
 		if sum != 200_000 {
 			t.Fatalf("sum is %d != 200_000", sum)
 		}
@@ -92,7 +96,9 @@ func TestBatchedAllDisabled(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -116,7 +122,9 @@ func TestConcurrentBatchedAllDisabled(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -140,7 +148,9 @@ func TestBatchedAggressive(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -164,7 +174,9 @@ func TestConcurrentBatchedAggressive(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -188,7 +200,9 @@ func TestDisabled(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -234,7 +248,9 @@ func TestDrainContext(t *testing.T) {
 	if sum != 10 {
 		t.Fatalf("drain not processing remaining item")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestFlushContext(t *testing.T) {
@@ -258,7 +274,9 @@ func TestFlushContext(t *testing.T) {
 	if sum != 10 {
 		t.Fatalf("flush not processing remaining item")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestBatchedDefault(t *testing.T) {
@@ -278,7 +296,9 @@ func TestBatchedDefault(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -302,7 +322,9 @@ func TestBatchedBlockWhileProcessing(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -326,7 +348,9 @@ func TestBatchedConcurrentBlockWhileProcessing(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -350,7 +374,9 @@ func TestBatchedConcurrent(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -373,7 +399,9 @@ func TestBatchedNoWait(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -394,7 +422,9 @@ func TestBatchedWait(t *testing.T) {
 	if sum != 9 {
 		t.Fatalf("sum is %d != 9", sum)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestBatchedSoftWait(t *testing.T) {
@@ -412,7 +442,9 @@ func TestBatchedSoftWait(t *testing.T) {
 	if sum != 0 {
 		t.Fatalf("soft wait process still run even when the batch is empty")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestBatchedHardWait(t *testing.T) {
@@ -430,7 +462,9 @@ func TestBatchedHardWait(t *testing.T) {
 	if sum == 0 {
 		t.Fatalf("hard wait process not run when the batch is empty")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestBatchedConcurrentNoWait(t *testing.T) {
@@ -450,7 +484,9 @@ func TestBatchedConcurrentNoWait(t *testing.T) {
 	for i := 0; i < 50_000; i++ {
 		processor.PutAllContext(context.Background(), new1x10Slice())
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}
@@ -479,7 +515,9 @@ func TestBasicError(t *testing.T) {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum+errCnt != 1_000_000 {
 		t.Fatalf("sum is %d != 1_000_000", sum+errCnt)
 	}
@@ -499,7 +537,9 @@ func TestRemainError(t *testing.T) {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum+(errCnt*2) != 1_000_000 {
 		t.Fatalf("sum is %d != 1_000_000", sum+(errCnt*2))
 	}
@@ -519,7 +559,9 @@ func TestRemainErrorNoMaxWait(t *testing.T) {
 	for i := 0; i < 1_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum+(errCnt*2) != 1_000 {
 		t.Fatalf("sum is %d != 1_000", sum+(errCnt*2))
 	}
@@ -553,7 +595,9 @@ func TestRemainErrorChain(t *testing.T) {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum+errCnt != 1_000_000 {
 		t.Fatalf("sum is %d != 1_000_000", sum+errCnt)
 	}
@@ -586,7 +630,9 @@ func TestBasicErrorChain(t *testing.T) {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 	if sum+(errCnt/2) != 1_000_000 {
 		t.Fatalf("sum is %d != 1_000_000", sum+(errCnt/2))
 	}
@@ -643,7 +689,9 @@ func TestPutContext(t *testing.T) {
 	if ok || sum > 0 {
 		t.Fatalf("Cancelled context added to processor")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestPutAllContext(t *testing.T) {
@@ -658,7 +706,9 @@ func TestPutAllContext(t *testing.T) {
 	if ok > 0 || sum > 0 {
 		t.Fatalf("Cancelled context added to processor")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestMergeContext(t *testing.T) {
@@ -674,7 +724,9 @@ func TestMergeContext(t *testing.T) {
 	if ok || sum > 0 {
 		t.Fatalf("Cancelled context added to processor")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }
 
 func TestMergeAllContext(t *testing.T) {
@@ -690,5 +742,7 @@ func TestMergeAllContext(t *testing.T) {
 	if ok > 0 || sum > 0 {
 		t.Fatalf("Cancelled context added to processor")
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
 }

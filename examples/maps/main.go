@@ -15,7 +15,9 @@ func main() {
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(i)
 	}
-	processor.MustClose()
+	if err := processor.Close(); err != nil {
+		panic(err)
+	}
 	// batch size is 10 so total batch is 100_000.
 	if count[0] != 100_000 {
 		panic("count is not 100_000")
