@@ -120,13 +120,22 @@ type runningProcessor[T any, B any] struct {
 	runConfig[B]
 	process ProcessBatchFn[B]
 
-	batch   B
+	// batch is the current batch of item.
+	batch B
+	// counter is the count of item in the batch.
+	// By default, it is the number of requests put into the processor that has not been processed.
+	// Can be customized using [WithBatchCounter].
 	counter int64
 
-	empty   chan struct{}
-	full    chan struct{}
+	// notEmpty notify when the processor is not empty.
+	// Used only for aggressive mode.
+	notEmpty chan struct{}
+	// full notify when the processor is full.
+	full chan struct{}
+	// blocked internal batch lock.
 	blocked chan struct{}
-	closed  chan struct{}
+	// closed notify when the processor is closed.
+	closed chan struct{}
 }
 
 // NewProcessor create a ProcessorSetup using specified functions.
@@ -210,7 +219,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 	if p.isAggressiveMode() {
 		processor.maxWait = 0
 		processor.isBlockWhileProcessing = false
-		processor.empty = make(chan struct{}, 1)
+		processor.notEmpty = make(chan struct{}, 1)
 	}
 
 	processor.batch = p.init(p.maxItem)
@@ -224,7 +233,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 	}
 
 	if p.maxWait == 0 {
-		if processor.empty != nil {
+		if processor.notEmpty != nil {
 			processor.continuousDispatch()
 		} else {
 			processor.waitUtilFullContinuousDispatch()
@@ -246,7 +255,7 @@ func (p ProcessorSetup[T, B]) RunOptions(process ProcessBatchFn[B], options ...R
 // when batch is empty, wait util it not empty,
 // else process the remaining batch util it became empty.
 func (p *runningProcessor[T, B]) continuousDispatch() {
-	if p.empty == nil {
+	if p.notEmpty == nil {
 		// Should never happen.
 		panic("Empty channel is nil. This is a bug in the lib!")
 	}
@@ -258,7 +267,7 @@ func (p *runningProcessor[T, B]) continuousDispatch() {
 				if p.counter == 0 {
 					<-p.blocked
 					select {
-					case <-p.empty:
+					case <-p.notEmpty:
 						select {
 						// re-acquire the lock.
 						case p.blocked <- struct{}{}:
@@ -437,9 +446,9 @@ func (p *runningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge
 	} else {
 		p.counter++
 	}
-	if p.empty != nil && p.counter > 0 {
+	if p.notEmpty != nil && p.counter > 0 {
 		select {
-		case p.empty <- struct{}{}:
+		case p.notEmpty <- struct{}{}:
 			// notify that the batch is now not empty.
 		default:
 			// processing, no need to modify.
@@ -584,9 +593,9 @@ func (p *runningProcessor[T, B]) MergeAllContext(ctx context.Context, items []T,
 		}
 		ok += int(available)
 
-		if p.empty != nil && p.counter > 0 {
+		if p.notEmpty != nil && p.counter > 0 {
 			select {
-			case p.empty <- struct{}{}:
+			case p.notEmpty <- struct{}{}:
 				// notify that the batch is now not empty.
 			default:
 				// processing, no need to modify.
