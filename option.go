@@ -121,14 +121,15 @@ func WithMaxConcurrency[I size](concurrency I) Option {
 type runConfig[B any] struct {
 	errorHandlers []RecoverBatchFn[B]
 	split         SplitBatchFn[B]
-	count         CountBatchFn[B]
+	count         func(B, int64) int64
 }
 
 // RunOption options for batch processing.
 type RunOption[B any] func(*runConfig[B])
 
 // WithBatchCounter provide alternate function to count the number of items in batch.
-func WithBatchCounter[B any](count CountBatchFn[B]) RunOption[B] {
+// The function receives the current batch and the last count.
+func WithBatchCounter[B any](count func(B, int64) int64) RunOption[B] {
 	return func(c *runConfig[B]) {
 		c.count = count
 	}

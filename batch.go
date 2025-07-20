@@ -130,9 +130,6 @@ type ProcessBatchFn[B any] func(B, int64) error
 // The RecoverBatchFn must never panic.
 type RecoverBatchFn[B any] func(B, int64, error) error
 
-// CountBatchFn function to count the number of items in batch.
-type CountBatchFn[B any] func(B, int64) int64
-
 // LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
