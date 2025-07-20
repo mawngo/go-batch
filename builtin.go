@@ -102,7 +102,7 @@ func InitType[T any](_ int64) T {
 }
 
 // SplitSliceEqually create a [SplitBatchFn] that split a slice into multiple equal chuck.
-func SplitSliceEqually[T any, I Size](numberOfChunk I) SplitBatchFn[[]T] {
+func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, _ int64) [][]T {
 		batches := make([][]T, numberOfChunk)
 		for i := 0; i < len(b); i++ {
@@ -114,7 +114,7 @@ func SplitSliceEqually[T any, I Size](numberOfChunk I) SplitBatchFn[[]T] {
 }
 
 // SplitSliceSizeLimit create a [SplitBatchFn] that split a slice into multiple chuck of limited size.
-func SplitSliceSizeLimit[T any, I Size](maxSizeOfChunk I) SplitBatchFn[[]T] {
+func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, i int64) [][]T {
 		size := i / int64(maxSizeOfChunk)
 		if i%int64(maxSizeOfChunk) != 0 {

@@ -53,8 +53,7 @@ func TestBatchedSplit(t *testing.T) {
 		sum := int32(0)
 		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 			Configure(WithMaxItem(10)).
-			WithSplitter(SplitSliceEqually[int](m)).
-			Run(summing(&sum))
+			Run(summing(&sum), WithBatchSplitter(SplitSliceEqually[int](m)))
 
 		for i := 0; i < 50_000; i++ {
 			processor.Put(1)
@@ -471,11 +470,11 @@ func TestBasicError(t *testing.T) {
 	errCnt := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
-		Run(summingErr(&sum), func(ints []int, i int64, _ error) error {
+		Run(summingErr(&sum), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
 			slog.Info("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
-		})
+		}))
 
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
@@ -491,11 +490,11 @@ func TestRemainError(t *testing.T) {
 	errCnt := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
-		Run(summingErrHalf(&sum), func(ints []int, i int64, _ error) error {
+		Run(summingErrHalf(&sum), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
 			slog.Info("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
-		})
+		}))
 
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
@@ -511,11 +510,11 @@ func TestRemainErrorNoMaxWait(t *testing.T) {
 	errCnt := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(100), WithDisabledDefaultProcessErrorLog()).
-		Run(summingErrHalfSleep(&sum, 200*time.Millisecond), func(ints []int, i int64, _ error) error {
+		Run(summingErrHalfSleep(&sum, 200*time.Millisecond), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
 			slog.Info("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
-		})
+		}))
 
 	for i := 0; i < 1_000; i++ {
 		processor.Put(1)
@@ -531,7 +530,7 @@ func TestRemainErrorChain(t *testing.T) {
 	errCnt := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
-		Run(summingErr(&sum),
+		Run(summingErr(&sum), WithBatchErrorHandlers(
 			func(ints []int, i int64, _ error) error {
 				slog.Info("receive error of", slog.Any("ints", ints))
 				half := i / 2
@@ -549,7 +548,7 @@ func TestRemainErrorChain(t *testing.T) {
 				t.Fatalf("should stopped")
 				return nil
 			},
-		)
+		))
 
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
@@ -565,7 +564,7 @@ func TestBasicErrorChain(t *testing.T) {
 	errCnt := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
-		Run(summingErr(&sum),
+		Run(summingErr(&sum), WithBatchErrorHandlers(
 			func(ints []int, i int64, _ error) error {
 				slog.Info("receive error of", slog.Any("ints", ints))
 				atomic.AddInt32(&errCnt, int32(i))
@@ -581,7 +580,8 @@ func TestBasicErrorChain(t *testing.T) {
 			func(_ []int, _ int64, _ error) error {
 				t.Fatalf("should stopped")
 				return nil
-			})
+			},
+		))
 
 	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
@@ -664,7 +664,7 @@ func TestPutAllContext(t *testing.T) {
 func TestMergeContext(t *testing.T) {
 	sum := int32(0)
 	merger := AddToSlice[int]
-	processor := NewProcessor(InitSlice[int], func(_ []int, i int) []int { return nil }).
+	processor := NewProcessor(InitSlice[int], func(_ []int, _ int) []int { return nil }).
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(summing(&sum))
 
@@ -680,7 +680,7 @@ func TestMergeContext(t *testing.T) {
 func TestMergeAllContext(t *testing.T) {
 	sum := int32(0)
 	merger := AddToSlice[int]
-	processor := NewProcessor(InitSlice[int], func(_ []int, i int) []int { return nil }).
+	processor := NewProcessor(InitSlice[int], func(_ []int, _ int) []int { return nil }).
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(summing(&sum))
 

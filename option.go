@@ -10,9 +10,8 @@ import (
 // You need to read the doc of the corresponding function to know what this value does.
 const Unset = -1
 
-// ProcessorConfig configurable options of processor.
-// Deprecated: removal in v2.
-type ProcessorConfig struct {
+// processorConfig configurable options of processor.
+type processorConfig struct {
 	aggressive             bool
 	maxItem                int64
 	isBlockWhileProcessing bool
@@ -25,11 +24,10 @@ type ProcessorConfig struct {
 }
 
 // Option general options for batch processor.
-type Option func(*ProcessorConfig)
+type Option func(*processorConfig)
 
-// Size is a type alias for int, int32, and int64.
-// Deprecated: removal in v2.
-type Size interface {
+// size is a type alias for int, int32, and int64.
+type size interface {
 	~int | ~int32 | ~int64
 }
 
@@ -40,7 +38,7 @@ type Size interface {
 // If set to -1 [Unset] and the maxItems is unlimited,
 // then the processor will keep processing whenever possible without waiting for anything.
 func WithMaxWait(wait time.Duration) Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.maxWait = wait
 		p.isHardMaxWait = false
 	}
@@ -51,7 +49,7 @@ func WithMaxWait(wait time.Duration) Option {
 // which is preferable if the processor must perform some periodic tasks.
 // You should ONLY configure [WithMaxWait] OR [WithHardMaxWait], NOT BOTH.
 func WithHardMaxWait(wait time.Duration) Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.maxWait = wait
 		p.isHardMaxWait = true
 	}
@@ -63,14 +61,14 @@ func WithHardMaxWait(wait time.Duration) Option {
 // The maxItems configured by [WithMaxItem] still control the maximum number of items the processor can hold before block.
 // The [WithBlockWhileProcessing] will be ignored in this mode.
 func WithAggressiveMode() Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.aggressive = true
 	}
 }
 
 // WithMaxCloseWait set the max waiting time when closing the processor.
 func WithMaxCloseWait(wait time.Duration) Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.maxCloseWait = wait
 	}
 }
@@ -79,14 +77,14 @@ func WithMaxCloseWait(wait time.Duration) Option {
 // If concurrency enabled, the processor only blocks when reached max concurrency.
 // This method has no effect if the processor is in aggressive mode.
 func WithBlockWhileProcessing() Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.isBlockWhileProcessing = true
 	}
 }
 
 // WithDisabledDefaultProcessErrorLog disable default error logging when batch processing error occurs.
 func WithDisabledDefaultProcessErrorLog() Option {
-	return func(p *ProcessorConfig) {
+	return func(p *processorConfig) {
 		p.isDisableErrorLogging = true
 	}
 }
@@ -95,8 +93,8 @@ func WithDisabledDefaultProcessErrorLog() Option {
 // Support fixed number and -1 [Unset] (unlimited)
 // When set to unlimited, it will never block, and the batch handling behavior depends on [WithMaxWait].
 // When set to 0, the processor will be DISABLED and item will be processed directly on caller thread without batching.
-func WithMaxItem[I Size](maxItem I) Option {
-	return func(p *ProcessorConfig) {
+func WithMaxItem[I size](maxItem I) Option {
+	return func(p *processorConfig) {
 		p.maxItem = int64(maxItem)
 	}
 }
@@ -104,8 +102,8 @@ func WithMaxItem[I Size](maxItem I) Option {
 // WithMaxConcurrency set the max number of go routine this processor can create when processing item.
 // Support 0 (run on dispatcher goroutine) and fixed number.
 // Passing -1 [Unset] (unlimited) to this function has the same effect of passing [math.MaxInt64].
-func WithMaxConcurrency[I Size](concurrency I) Option {
-	return func(p *ProcessorConfig) {
+func WithMaxConcurrency[I size](concurrency I) Option {
+	return func(p *processorConfig) {
 		p.concurrentLimit = int64(concurrency)
 		if concurrency > 0 {
 			p.concurrentLimiter = semaphore.NewWeighted(int64(concurrency))
