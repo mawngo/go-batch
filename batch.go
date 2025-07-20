@@ -428,7 +428,7 @@ func (p *runningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge
 	} else {
 		p.counter++
 	}
-	if p.empty != nil {
+	if p.empty != nil && p.counter > 0 {
 		select {
 		case p.empty <- struct{}{}:
 			// notify that the batch is now not empty.
@@ -527,7 +527,7 @@ func (p *runningProcessor[T, B]) MergeAllContext(ctx context.Context, items []T,
 		}
 		ok += int(available)
 
-		if p.empty != nil {
+		if p.empty != nil && p.counter > 0 {
 			select {
 			case p.empty <- struct{}{}:
 				// notify that the batch is now not empty.
