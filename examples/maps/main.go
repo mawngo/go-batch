@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/mawngo/go-batch"
+	"github.com/mawngo/go-batch/v2"
 	"sync"
 )
 

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/mawngo/go-batch"
+	"github.com/mawngo/go-batch/v2"
 )
 
 func main() {

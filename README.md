@@ -10,7 +10,7 @@ bulk enqueue, precompute reports, ...
 Require go 1.24+
 
 ```shell
-go get github.com/mawngo/go-batch
+go get github.com/mawngo/go-batch/v2
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ go get github.com/mawngo/go-batch
 package main
 
 import (
-	"github.com/mawngo/go-batch"
+	"github.com/mawngo/go-batch/v2"
 	"sync/atomic"
 	"time"
 )
