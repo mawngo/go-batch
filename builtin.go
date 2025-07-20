@@ -72,6 +72,7 @@ func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K]) MergeT
 // that add item to map using key and value [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, it will replace the key.
+// Deprecated: change signature to extractor ExtractFn[T, KeyVal[K, V]] in v2.
 func MergeToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
 	if combiner == nil {
 		return func(m map[K]V, t T) map[K]V {
@@ -132,6 +133,7 @@ func AddKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyV
 // that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, it will replace the key.
+// Deprecated: will be renamed to [MergeToMapUsing] in v2.
 func MergeKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
 	if combiner == nil {
 		return func(m map[K]V, t T) map[K]V {
