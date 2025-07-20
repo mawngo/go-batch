@@ -33,7 +33,12 @@ type Processor[T any, B any] interface {
 	// Put add item to the processor.
 	// This method can block until the processor is available for processing new batch,
 	// and may block indefinitely.
+	// It is recommended to use [Processor.PutContext] instead.
 	Put(item T)
+	// PutAll add all specified item to the processor.
+	// This method can block until the processor is available for processing new batch,
+	// and may block indefinitely.
+	// It is recommended to use [Processor.PutAllContext] instead.
 	PutAll(items []T)
 	// PutContext add item to the processor.
 	// If the context is canceled and the item is not added, then this method will return false.
@@ -47,7 +52,12 @@ type Processor[T any, B any] interface {
 	// Merge add item to the processor using merge function.
 	// This method can block until the processor is available for processing new batch,
 	// and may block indefinitely.
+	// It is recommended to use [Processor.MergeContext] instead.
 	Merge(item T, merge MergeToBatchFn[B, T])
+	// MergeAll add all items to the processor using merge function.
+	// This method can block until the processor is available for processing new batch,
+	// and may block indefinitely.
+	// It is recommended to use [Processor.MergeAllContext] instead.
 	MergeAll(items []T, merge MergeToBatchFn[B, T])
 	// MergeContext add item to the processor using merge function.
 	// If the context is canceled and the item is not added, then this method will return false.
@@ -85,6 +95,7 @@ type Processor[T any, B any] interface {
 	FlushContext(ctx context.Context) error
 	// Flush force process the current batch.
 	// This method may process the batch on caller thread.
+	// It is recommended to use [Processor.FlushContext] instead.
 	Flush()
 	// MustClose stop the processor and panic if there is any error.
 	// This method should only be used in tests.
@@ -110,30 +121,6 @@ type runningProcessor[T any, B any] struct {
 	full    chan struct{}
 	blocked chan struct{}
 	closed  chan struct{}
-}
-
-// InitBatchFn function to create empty batch.
-type InitBatchFn[B any] func(int64) B
-
-// MergeToBatchFn function to add an item to batch.
-type MergeToBatchFn[B any, T any] func(B, T) B
-
-// SplitBatchFn function to split a batch into multiple smaller batches.
-// The SplitBatchFn must never panic.
-type SplitBatchFn[B any] func(B, int64) []B
-
-// ProcessBatchFn function to process a batch.
-type ProcessBatchFn[B any] func(B, int64) error
-
-// RecoverBatchFn function to handle an error batch.
-// Each RecoverBatchFn can further return error to enable the next RecoverBatchFn in the chain.
-// The RecoverBatchFn must never panic.
-type RecoverBatchFn[B any] func(B, int64, error) error
-
-// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
-func LoggingErrorHandler[B any](_ B, count int64, err error) error {
-	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
-	return err
 }
 
 // NewProcessor create a ProcessorSetup using specified functions.
@@ -397,7 +384,7 @@ func (p *runningProcessor[T, B]) PutContext(ctx context.Context, item T) bool {
 
 // Merge add item to the processor.
 // This method can block until the processor is available for processing new batch.
-// It is recommended to use [runningProcessor.MergeContext] instead.
+// It is recommended to use [Processor.MergeContext] instead.
 func (p *runningProcessor[T, B]) Merge(item T, merge MergeToBatchFn[B, T]) {
 	//nolint:staticcheck
 	p.MergeContext(nil, item, merge)
@@ -463,7 +450,7 @@ func (p *runningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge
 
 // PutAll add all item to the processor.
 // This method will block until all items were put into the processor.
-// It is recommended to use [runningProcessor.PutAllContext] instead.
+// It is recommended to use [Processor.PutAllContext] instead.
 func (p *runningProcessor[T, B]) PutAll(items []T) {
 	//nolint:staticcheck
 	p.PutAllContext(nil, items)
@@ -479,7 +466,7 @@ func (p *runningProcessor[T, B]) PutAllContext(ctx context.Context, items []T) i
 
 // MergeAll add all item to the processor using merge function.
 // This method will block until all items were put into the processor.
-// It is recommended to use [runningProcessor.MergeAllContext] instead.
+// It is recommended to use [Processor.MergeAllContext] instead.
 func (p *runningProcessor[T, B]) MergeAll(items []T, merge MergeToBatchFn[B, T]) {
 	//nolint:staticcheck
 	p.MergeAllContext(nil, items, merge)
@@ -685,7 +672,7 @@ func (p *runningProcessor[T, B]) FlushContext(ctx context.Context) error {
 
 // Flush force process the current batch.
 // This method may process the batch on caller thread, depend on concurrent and block settings.
-// It is recommended to use [runningProcessor.FlushContext] instead.
+// It is recommended to use [Processor.FlushContext] instead.
 func (p *runningProcessor[T, B]) Flush() {
 	err := p.FlushContext(context.Background())
 	if err != nil {

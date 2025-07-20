@@ -1,6 +1,9 @@
 package batch
 
-import "context"
+import (
+	"context"
+	"log/slog"
+)
 
 // Future is a future that can be used to get the result of a task.
 type Future[T any] interface {
@@ -12,6 +15,30 @@ type Future[T any] interface {
 type KeyVal[K any, V any] struct {
 	key K
 	val V
+}
+
+// InitBatchFn function to create empty batch.
+type InitBatchFn[B any] func(int64) B
+
+// MergeToBatchFn function to add an item to batch.
+type MergeToBatchFn[B any, T any] func(B, T) B
+
+// SplitBatchFn function to split a batch into multiple smaller batches.
+// The SplitBatchFn must never panic.
+type SplitBatchFn[B any] func(B, int64) []B
+
+// ProcessBatchFn function to process a batch.
+type ProcessBatchFn[B any] func(B, int64) error
+
+// RecoverBatchFn function to handle an error batch.
+// Each RecoverBatchFn can further return error to enable the next RecoverBatchFn in the chain.
+// The RecoverBatchFn must never panic.
+type RecoverBatchFn[B any] func(B, int64, error) error
+
+// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
+func LoggingErrorHandler[B any](_ B, count int64, err error) error {
+	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
+	return err
 }
 
 // InitSlice is [InitBatchFn] that allocate a slice.
