@@ -8,6 +8,12 @@ type Future[T any] interface {
 	GetContext(ctx context.Context) (T, error)
 }
 
+// KeyVal is a tuple of key and value.
+type KeyVal[K any, V any] struct {
+	key K
+	val V
+}
+
 // InitSlice is [InitBatchFn] that allocate a slice.
 func InitSlice[T any](i int64) []T {
 	if i < 0 {
@@ -25,6 +31,9 @@ func AddToSlice[T any](b []T, item T) []T {
 }
 
 // InitMap is [InitBatchFn] that allocate a map.
+// It uses the default size for map, as the size of item may be much larger than the size of map after merged.
+// However, if you properly configured [WithBatchCounter] to count the size of map and [WithMaxItem] to a reasonable value,
+// you may benefit from specifying the size of map using your own [InitBatchFn].
 func InitMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
 		return make(map[K]V, 1)
@@ -39,6 +48,7 @@ type ExtractFn[T any, V any] func(T) V
 type CombineFn[T any] func(T, T) T
 
 // AddToMapUsing create [MergeToBatchFn] that add item to map using key and value [ExtractFn].
+// Deprecated: use MergeToMapUsing with nil [CombineFn].
 func AddToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V]) MergeToBatchFn[map[K]V, T] {
 	return func(m map[K]V, t T) map[K]V {
 		key := keyExtractor(t)
@@ -49,6 +59,7 @@ func AddToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], val
 }
 
 // AddSelfToMapUsing create [MergeToBatchFn] that add self as item to map using key [ExtractFn].
+// Deprecated: use MergeSelfToMapUsing with nil [CombineFn].
 func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K]) MergeToBatchFn[map[K]T, T] {
 	return func(m map[K]T, t T) map[K]T {
 		key := keyExtractor(t)
@@ -60,7 +71,17 @@ func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K]) MergeT
 // MergeToMapUsing create [MergeToBatchFn]
 // that add item to map using key and value [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
+// If [CombineFn] is nil, it will replace the key.
 func MergeToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
+	if combiner == nil {
+		return func(m map[K]V, t T) map[K]V {
+			key := keyExtractor(t)
+			value := valueExtractor(t)
+			m[key] = value
+			return m
+		}
+	}
+
 	return func(m map[K]V, t T) map[K]V {
 		key := keyExtractor(t)
 		value := valueExtractor(t)
@@ -76,7 +97,16 @@ func MergeToMapUsing[T any, K comparable, V any](keyExtractor ExtractFn[T, K], v
 // MergeSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
 // and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
+// If [CombineFn] is nil, it will replace the key.
 func MergeSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
+	if combiner == nil {
+		return func(m map[K]T, t T) map[K]T {
+			key := keyExtractor(t)
+			m[key] = t
+			return m
+		}
+	}
+
 	return func(m map[K]T, t T) map[K]T {
 		key := keyExtractor(t)
 		if v, ok := m[key]; ok {
@@ -88,13 +118,8 @@ func MergeSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], comb
 	}
 }
 
-// KeyVal is a tuple of key and value.
-type KeyVal[K any, V any] struct {
-	key K
-	val V
-}
-
 // AddKeyValToMapUsing create [MergeToBatchFn] that add item to map using [KeyVal] [ExtractFn].
+// Deprecated: use MergeKeyValToMapUsing with nil [CombineFn].
 func AddKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]]) MergeToBatchFn[map[K]V, T] {
 	return func(m map[K]V, t T) map[K]V {
 		kv := extractor(t)
@@ -106,7 +131,16 @@ func AddKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyV
 // MergeKeyValToMapUsing create [MergeToBatchFn]
 // that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
+// If [CombineFn] is nil, it will replace the key.
 func MergeKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
+	if combiner == nil {
+		return func(m map[K]V, t T) map[K]V {
+			kv := extractor(t)
+			m[kv.key] = kv.val
+			return m
+		}
+	}
+
 	return func(m map[K]V, t T) map[K]V {
 		kv := extractor(t)
 		if v, ok := m[kv.key]; ok {
@@ -120,6 +154,7 @@ func MergeKeyValToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, Ke
 
 // InitChan is an [InitBatchFn] that allocate a channel.
 // this should not be used with unbounded processor (maxItem < 0).
+// Deprecated: remove in v2.
 func InitChan[T any](i int64) chan T {
 	if i < 0 {
 		panic("cannot use unbounded processor with channel batch")
@@ -174,23 +209,27 @@ func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
 }
 
 // NewMapProcessor prepare a processor that backed by a map.
+// Deprecated: change signature to extractor ExtractFn[T, KeyVal[K, V]].
 func NewMapProcessor[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], MergeToMapUsing(keyExtractor, valueExtractor, combiner))
 }
 
 // NewIdentityMapProcessor prepare a processor that backed by a map, using item as value without extracting.
+// Deprecated: change signature in v2.
 func NewIdentityMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
 	return NewProcessor(InitMap[K, T], MergeSelfToMapUsing(keyExtractor, combiner))
 }
 
 // NewReplaceIdentityMapProcessor prepare a processor that backed by a map, using item as value without extracting.
 // [ProcessorSetup] created by this construct handles duplicated key by keeping only the last value.
+// Deprecated: rename in v2 to [NewIdentityMapProcessor] instead.
 func NewReplaceIdentityMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K]) ProcessorSetup[T, map[K]T] {
 	return NewProcessor(InitMap[K, T], AddSelfToMapUsing(keyExtractor))
 }
 
 // NewReplaceMapProcessor prepare a processor that backed by a map.
 // [ProcessorSetup] created by this construct handles duplicated key by keeping only the last value.
+// Deprecated: remove in v2.
 func NewReplaceMapProcessor[T any, K comparable, V any](keyExtractor ExtractFn[T, K], valueExtractor ExtractFn[T, V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], AddToMapUsing(keyExtractor, valueExtractor))
 }

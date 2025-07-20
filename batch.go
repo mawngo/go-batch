@@ -11,8 +11,10 @@ import (
 var _ Runner[any, any] = (*RunningProcessor[any, any])(nil)
 
 // ProcessorSetup batch processor that is in setup phase (not running)
-// You cannot put item into this processor, use Run to create a RunningProcessor that can accept item.
-// See [ProcessorConfig] for available options.
+// You cannot put item into this processor, use [ProcessorSetup.Run] to create a [Runner] that can accept item.
+// See [Option] for available options.
+// Deprecated: rename in v2.
+// You should not need to use this struct directly anyway.
 type ProcessorSetup[T any, B any] struct {
 	ProcessorConfig
 	merge MergeToBatchFn[B, T]
@@ -21,7 +23,12 @@ type ProcessorSetup[T any, B any] struct {
 	count CountBatchFn[B]
 }
 
+type Processor[T any, B any] = Runner[T, B]
+type SliceProcessor[T any] = Runner[T, []T]
+type MapProcessor[K comparable, T any] = Runner[T, map[K]T]
+
 // Runner provides common methods of a [RunningProcessor].
+// Deprecated: rename in v2, use [Processor] instead.
 type Runner[T any, B any] interface {
 	// Put add item to the processor.
 	// This method can block until the processor is available for processing new batch,
@@ -85,22 +92,28 @@ type Runner[T any, B any] interface {
 }
 
 // SliceRunner shorthand for [Runner] that merge item into slices.
+// Deprecated: rename in v2, use [SliceProcessor] instead.
 type SliceRunner[T any] interface {
 	Runner[T, []T]
 }
 
 // MapRunner shorthand for [Runner] that merge item into maps.
+// Deprecated: rename in v2, use [MapProcessor] instead.
 type MapRunner[K comparable, T any] interface {
 	Runner[T, map[K]T]
 }
 
 // RunningProcessor processor that is running and can process item.
+// Deprecated: removal in v2.
 type RunningProcessor[T any, B any] struct {
 	ProcessorSetup[T, B]
 	process       ProcessBatchFn[B]
 	errorHandlers []RecoverBatchFn[B]
-	batch         B
-	counter       int64
+	split         SplitBatchFn[B]
+	count         CountBatchFn[B]
+
+	batch   B
+	counter int64
 
 	empty   chan struct{}
 	full    chan struct{}
@@ -120,6 +133,9 @@ type SplitBatchFn[B any] func(B, int64) []B
 
 // ProcessBatchFn function to process a batch.
 type ProcessBatchFn[B any] func(B, int64) error
+
+// ProcessBatchIgnoreErrorFn  function to process the batch without error handling.
+// Deprecated: removal in v2.
 type ProcessBatchIgnoreErrorFn[B any] func(B, int64)
 
 // RecoverBatchFn function to handle an error batch.
@@ -190,6 +206,8 @@ func (p *RunningProcessor[T, B]) ApproxItemCount() int64 {
 	return p.counter
 }
 
+// RunIgnoreError process the batch and ignore error.
+// Deprecated: removal in v2.
 func (p ProcessorSetup[T, B]) RunIgnoreError(process ProcessBatchIgnoreErrorFn[B]) *RunningProcessor[T, B] {
 	return p.Run(func(b B, i int64) error {
 		process(b, i)
@@ -202,12 +220,16 @@ func (p ProcessorSetup[T, B]) RunIgnoreError(process ProcessBatchIgnoreErrorFn[B
 // the processor will split the batch and process across multiple threads,
 // otherwise the batch will be process on a single thread, and block when concurrency is reached.
 // This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
+// Deprecated: removal in v2.
+// Replaced by [RunOption] and [ProcessorSetup.RunOptions].
 func (p ProcessorSetup[T, B]) WithSplitter(split SplitBatchFn[B]) ProcessorSetup[T, B] {
 	p.split = split
 	return p
 }
 
 // WithCounter provide alternate function to count the number of items in batch.
+// Deprecated: removal in v2.
+// Replaced by [RunOption] and [ProcessorSetup.RunOptions].
 func (p ProcessorSetup[T, B]) WithCounter(count CountBatchFn[B]) ProcessorSetup[T, B] {
 	p.count = count
 	return p
@@ -219,19 +241,42 @@ func (p ProcessorSetup[T, B]) isAggressiveMode() bool {
 
 // Run create a [RunningProcessor] that can accept item.
 // Accept a [ProcessBatchFn] and a [RecoverBatchFn] chain to process on error.
+// Deprecated: the signature will change in v2, see [ProcessorSetup.RunOptions].
 func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], errorHandlers ...RecoverBatchFn[B]) *RunningProcessor[T, B] {
-	// if errorHandlers is empty, then add a default logging handler.
-	if !p.isDisableErrorLogging && len(errorHandlers) == 0 {
-		errorHandlers = []RecoverBatchFn[B]{LoggingErrorHandler[B]}
+	processor := p.RunOptions(process,
+		WithBatchCounter(p.count),
+		WithBatchSplitter(p.split),
+		WithBatchErrorHandlers(errorHandlers...),
+	)
+	return processor.(*RunningProcessor[T, B])
+}
+
+// RunOptions create a [Processor].
+// Accept a [ProcessBatchFn] and a list of [RunOption].
+// This method is for migration only, in v2 the [Run] method signature will change to this method,
+// and this method will be deprecated.
+func (p ProcessorSetup[T, B]) RunOptions(process ProcessBatchFn[B], options ...RunOption[B]) Processor[T, B] {
+	config := &runConfig[B]{}
+	for i := range options {
+		options[i](config)
 	}
 
 	processor := &RunningProcessor[T, B]{
 		ProcessorSetup: p,
 		process:        process,
-		errorHandlers:  errorHandlers,
-		full:           make(chan struct{}),
-		blocked:        make(chan struct{}, 1),
-		closed:         make(chan struct{}),
+
+		errorHandlers: config.errorHandlers,
+		split:         config.split,
+		count:         config.count,
+
+		full:    make(chan struct{}),
+		blocked: make(chan struct{}, 1),
+		closed:  make(chan struct{}),
+	}
+
+	// if errorHandlers is empty, then add a default logging handler.
+	if !p.isDisableErrorLogging && len(processor.errorHandlers) == 0 {
+		processor.errorHandlers = []RecoverBatchFn[B]{LoggingErrorHandler[B]}
 	}
 
 	if p.isAggressiveMode() {

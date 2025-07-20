@@ -11,6 +11,7 @@ import (
 const Unset = -1
 
 // ProcessorConfig configurable options of processor.
+// Deprecated: removal in v2.
 type ProcessorConfig struct {
 	aggressive             bool
 	maxItem                int64
@@ -23,10 +24,11 @@ type ProcessorConfig struct {
 	maxCloseWait           time.Duration
 }
 
-// Option applies an option to [ProcessorConfig].
+// Option general options for batch processor.
 type Option func(*ProcessorConfig)
 
 // Size is a type alias for int, int32, and int64.
+// Deprecated: removal in v2.
 type Size interface {
 	~int | ~int32 | ~int64
 }
@@ -113,5 +115,43 @@ func WithMaxConcurrency[I Size](concurrency I) Option {
 			p.concurrentLimit = math.MaxInt64
 			p.concurrentLimiter = semaphore.NewWeighted(math.MaxInt64)
 		}
+	}
+}
+
+// runConfig configurable options for running processor.
+// This is a separate type as it contains generic types.
+type runConfig[B any] struct {
+	errorHandlers []RecoverBatchFn[B]
+	split         SplitBatchFn[B]
+	count         CountBatchFn[B]
+}
+
+// RunOption options for batch processing.
+type RunOption[B any] func(*runConfig[B])
+
+// WithBatchCounter provide alternate function to count the number of items in batch.
+func WithBatchCounter[B any](count CountBatchFn[B]) RunOption[B] {
+	return func(c *runConfig[B]) {
+		c.count = count
+	}
+}
+
+// WithBatchSplitter split the batch into multiple smaller batch.
+// When concurrency > 0 and [SplitBatchFn] are set,
+// the processor will split the batch and process across multiple threads,
+// otherwise the batch will be process on a single thread, and block when concurrency is reached.
+// This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
+func WithBatchSplitter[B any](split SplitBatchFn[B]) RunOption[B] {
+	return func(c *runConfig[B]) {
+		c.split = split
+	}
+}
+
+// WithBatchErrorHandlers provide a [RecoverBatchFn] chain to process on error.
+// Each RecoverBatchFn can further return error to enable the next RecoverBatchFn in the chain.
+// The RecoverBatchFn must never panic.
+func WithBatchErrorHandlers[B any](handlers ...RecoverBatchFn[B]) RunOption[B] {
+	return func(c *runConfig[B]) {
+		c.errorHandlers = append(c.errorHandlers, handlers...)
 	}
 }
