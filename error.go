@@ -19,6 +19,11 @@ func (e *Error[B]) String() string {
 	return e.Cause.Error()
 }
 
+// Unwrap implements the error Unwrap interface.
+func (e *Error[B]) Unwrap() error {
+	return e.Cause
+}
+
 // NewErrorWithRemaining create a [*Error] with remaining items.
 func NewErrorWithRemaining[B any](err error, remainBatch B, count int64) error {
 	return &Error[B]{
