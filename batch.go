@@ -19,15 +19,6 @@ type ProcessorSetup[T any, B any] struct {
 	init  InitBatchFn[B]
 }
 
-// Deprecated: to be removal.
-type Runner[T any, B any] = Processor[T, B]
-
-// Deprecated: to be removal.
-type SliceRunner[T any] = Processor[T, []T]
-
-// Deprecated: to be removal.
-type MapRunner[K comparable, T any] = Processor[T, map[K]T]
-
 // Processor provides common methods of a processor.
 type Processor[T any, B any] interface {
 	// Put add item to the processor.
@@ -85,6 +76,7 @@ type Processor[T any, B any] interface {
 	// If the context is canceled, then this method will return approximate item count and false.
 	ItemCountContext(ctx context.Context) (int64, bool)
 	// Close stop the processor.
+	// This method may process the leftover branch on caller thread.
 	// The implementation of this method may vary, but it must never wait indefinitely.
 	Close() error
 	// CloseContext stop the processor.
@@ -246,12 +238,6 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 
 	processor.timedDispatch()
 	return processor
-}
-
-// RunOptions alias of [ProcessorSetup.Run] for migration from v1.
-// Deprecated: to be removal, use [ProcessorSetup.Run] instead.
-func (p ProcessorSetup[T, B]) RunOptions(process ProcessBatchFn[B], options ...RunOption[B]) Processor[T, B] {
-	return p.Run(process, options...)
 }
 
 // continuousDispatch create a dispatcher routine that,
