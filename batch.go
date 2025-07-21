@@ -563,20 +563,24 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 			p.blocked <- struct{}{}
 		}
 
-		available := int64(len(items) - ok)
-		if p.maxItem > -1 {
-			available = min(p.maxItem-p.counter, available)
+		for {
+			left := int64(len(items) - ok)
+			if p.maxItem > -1 {
+				left = min(p.maxItem-p.counter, left)
+			}
+			if left == 0 {
+				break
+			}
+
+			p.batch = merge(p.batch, items[ok])
+			p.iCounter++
+			if p.count != nil {
+				p.counter = p.count(p.batch, p.iCounter)
+			} else {
+				p.counter++
+			}
+			ok++
 		}
-		for i := int64(ok); i < int64(ok)+available; i++ {
-			p.batch = merge(p.batch, items[i])
-		}
-		p.iCounter += available
-		if p.count != nil {
-			p.counter = p.count(p.batch, p.iCounter)
-		} else {
-			p.counter += available
-		}
-		ok += int(available)
 
 		if p.notEmpty != nil && p.counter > 0 {
 			select {
