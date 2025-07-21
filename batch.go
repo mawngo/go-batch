@@ -11,7 +11,7 @@ import (
 var _ IProcessor[any, any] = (*Processor[any, any])(nil)
 
 // ProcessorSetup batch processor that is in setup phase (not running).
-// You cannot put item into this processor, use [ProcessorSetup.Run] to create a [Runner] that can accept item.
+// You cannot put item into this processor, use [ProcessorSetup.Run] to create a [Processor] that can accept item.
 // See [Option] for available options.
 type ProcessorSetup[T any, B any] struct {
 	processorConfig
@@ -62,10 +62,10 @@ type IProcessor[T any, B any] interface {
 	// Peek access the current batch using provided function.
 	// This method can block until the processor is available.
 	// It is recommended to use [IProcessor.PeekContext] instead.
-	// This method does count as processing the batch, the batch will still be processed.
+	// This method does not count as processing the batch, the batch will still be processed.
 	Peek(reader ProcessBatchFn[B]) error
 	// PeekContext access the current batch using provided function.
-	// This method does count as processing the batch, the batch will still be processed.
+	// This method does not count as processing the batch, the batch will still be processed.
 	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
 
 	// ApproxItemCount return number of current item in processor, approximately.
@@ -146,8 +146,7 @@ func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T])
 	}
 }
 
-// Configure apply Option to this processor.
-// Each Configure call creates a new processor.
+// Configure apply [Option] to this processor setup.
 func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] {
 	for i := range options {
 		options[i](&p.processorConfig)
@@ -450,14 +449,14 @@ func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeT
 // Peek access the current batch using provided function.
 // This method can block until the processor is available.
 // It is recommended to use [Processor.PeekContext] instead.
-// This method does count as processing the batch, the batch will still be processed.
+// This method does not count as processing the batch, the batch will still be processed.
 func (p *Processor[T, B]) Peek(reader ProcessBatchFn[B]) error {
 	//nolint:staticcheck
 	return p.PeekContext(nil, reader)
 }
 
 // PeekContext access the current batch using provided function.
-// This method does count as processing the batch, the batch will still be processed.
+// This method does not count as processing the batch, the batch will still be processed.
 func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error {
 	if ctx != nil && ctx.Err() != nil {
 		return ctx.Err()
