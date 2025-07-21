@@ -81,7 +81,7 @@ func TestBatchedSplit(t *testing.T) {
 func TestBatchedAllDisabled(t *testing.T) {
 	sum := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unset), WithMaxWait(Unset)).
+		Configure(WithMaxItem(0), WithMaxWait(Unset)).
 		Run(summing(&sum))
 
 	for i := 0; i < 500_000; i++ {
@@ -107,7 +107,7 @@ func TestBatchedAllDisabled(t *testing.T) {
 func TestConcurrentBatchedAllDisabled(t *testing.T) {
 	sum := int32(0)
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
-		Configure(WithMaxItem(Unset), WithMaxWait(Unset), WithMaxConcurrency(10)).
+		Configure(WithMaxItem(0), WithMaxWait(Unset), WithMaxConcurrency(10)).
 		Run(summing(&sum))
 
 	for i := 0; i < 500_000; i++ {
