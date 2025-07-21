@@ -126,6 +126,9 @@ type runningProcessor[T any, B any] struct {
 	// By default, it is the number of requests put into the processor that has not been processed.
 	// Can be customized using [WithBatchCounter].
 	counter int64
+	// iCounter is the count of item put into the processor.
+	// This will be passed to [WithBatchCounter].
+	iCounter int64
 
 	// notEmpty notify when the processor is not empty.
 	// Used only for aggressive mode.
@@ -141,7 +144,7 @@ type runningProcessor[T any, B any] struct {
 // NewProcessor create a ProcessorSetup using specified functions.
 // See [ProcessorSetup.Configure] and [Option] for available configuration.
 // The result [ProcessorSetup] is in setup state.
-// Call [ProcessorSetup.Run] with a handler to create a [runningProcessor] that can accept item.
+// Call [ProcessorSetup.Run] with a handler to create a [Processor] that can accept item.
 // It is recommended to set at least maxWait by [WithMaxWait] or maxItem by [WithMaxItem].
 // By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
 func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
@@ -168,7 +171,7 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 
 // ItemCount return number of current item in processor.
 // This method will block the processor for accurate counting.
-// It is recommended to use [runningProcessor.ItemCountContext] instead.
+// It is recommended to use [Processor.ItemCountContext] instead.
 func (p *runningProcessor[T, B]) ItemCount() int64 {
 	cnt, _ := p.ItemCountContext(context.Background())
 	return cnt
@@ -441,8 +444,9 @@ func (p *runningProcessor[T, B]) MergeContext(ctx context.Context, item T, merge
 	}()
 
 	p.batch = merge(p.batch, item)
+	p.iCounter++
 	if p.count != nil {
-		p.counter = p.count(p.batch, p.counter)
+		p.counter = p.count(p.batch, p.iCounter)
 	} else {
 		p.counter++
 	}
@@ -586,8 +590,9 @@ func (p *runningProcessor[T, B]) MergeAllContext(ctx context.Context, items []T,
 		for i := int64(ok); i < int64(ok)+available; i++ {
 			p.batch = merge(p.batch, items[i])
 		}
+		p.iCounter += available
 		if p.count != nil {
-			p.counter = p.count(p.batch, p.counter)
+			p.counter = p.count(p.batch, p.iCounter)
 		} else {
 			p.counter += available
 		}
@@ -687,6 +692,7 @@ func (p *runningProcessor[T, B]) DrainContext(ctx context.Context) error {
 			batch := p.batch
 			counter := p.counter
 			p.batch = p.init(p.maxItem)
+			p.iCounter = 0
 			p.counter = 0
 			<-p.blocked
 			p.doProcessConcurrency(batch, counter)
@@ -755,6 +761,7 @@ func (p *runningProcessor[T, B]) doProcessAndRelease(block bool) {
 		defer func() {
 			if r := recover(); r != nil {
 				p.batch = p.init(p.maxItem)
+				p.iCounter = 0
 				p.counter = 0
 				<-p.blocked
 				panic(r)
@@ -762,12 +769,14 @@ func (p *runningProcessor[T, B]) doProcessAndRelease(block bool) {
 		}()
 		p.doProcessConcurrency(batch, counter)
 		p.batch = p.init(p.maxItem)
+		p.iCounter = 0
 		p.counter = 0
 		// Release after processing.
 		<-p.blocked
 		return
 	}
 	p.batch = p.init(p.maxItem)
+	p.iCounter = 0
 	p.counter = 0
 	// Release before processing.
 	<-p.blocked
