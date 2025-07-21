@@ -786,7 +786,7 @@ func TestCustomCounter(t *testing.T) {
 		return i
 	}, nil).
 		Configure(WithMaxItem(11), WithMaxWait(Unset)).
-		Run(func(m map[int]int, i int64) error {
+		Run(func(_ map[int]int, i int64) error {
 			atomic.AddInt32(&touched, 1)
 			if i != 110 {
 				t.Fatal("Input counter is not correct")

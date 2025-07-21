@@ -42,7 +42,7 @@ type ProcessBatchFn[B any] func(B, int64) error
 //
 // Accept the current batch and a counter with the previous error.
 // The counter and batch can be controlled by returning an [Error],
-// otherwise it will receive the same arguments of [ProcessBatchFn]
+// otherwise it will receive the same arguments of [ProcessBatchFn].
 type RecoverBatchFn[B any] func(B, int64, error) error
 
 // LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
@@ -84,11 +84,6 @@ type ExtractFn[T any, V any] func(T) V
 // CombineFn is a function to combine two values in to one.
 type CombineFn[T any] func(T, T) T
 
-// Deprecated: use [AddToMapUsing]
-func MergeToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
-	return AddToMapUsing(extractor, combiner)
-}
-
 // AddToMapUsing create [MergeToBatchFn]
 // that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
@@ -111,11 +106,6 @@ func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, 
 		m[kv.key] = kv.val
 		return m
 	}
-}
-
-// Deprecated: use [AddSelfToMapUsing]
-func MergeSelfToMapUsing[T any, K comparable](extractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
-	return AddSelfToMapUsing(extractor, combiner)
 }
 
 // AddSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
@@ -182,7 +172,7 @@ func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 
 // CountMapKeys create a counter that count keys in map.
 func CountMapKeys[V any, K comparable]() func(map[K]V, int64) int64 {
-	return func(m map[K]V, i int64) int64 {
+	return func(m map[K]V, _ int64) int64 {
 		return int64(len(m))
 	}
 }
@@ -196,11 +186,6 @@ func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
 // If [CombineFn] is nil, duplicated key will be replaced.
 func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], AddToMapUsing(extractor, combiner))
-}
-
-// Deprecated: use [NewSelfMapProcessor]
-func NewIdentityMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
-	return NewSelfMapProcessor(keyExtractor, combiner)
 }
 
 // NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
