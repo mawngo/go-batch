@@ -7,7 +7,10 @@ import (
 
 // Future is a future that can be used to get the result of a task.
 type Future[T any] interface {
+	// Get wait until the result is available.
 	Get() (T, error)
+	// GetContext wait until the result is available.
+	// The context can be used to cancel the wait (not the task).
 	GetContext(ctx context.Context) (T, error)
 }
 
@@ -18,21 +21,28 @@ type KeyVal[K any, V any] struct {
 }
 
 // InitBatchFn function to create empty batch.
+// Accept max item limit, can be 1 (disabled), -1 (unlimited) or any positive number.
 type InitBatchFn[B any] func(int64) B
 
 // MergeToBatchFn function to add an item to batch.
 type MergeToBatchFn[B any, T any] func(B, T) B
 
 // SplitBatchFn function to split a batch into multiple smaller batches.
+// Accept the current batch and the input count.
 // The SplitBatchFn must never panic.
 type SplitBatchFn[B any] func(B, int64) []B
 
 // ProcessBatchFn function to process a batch.
+// Accept the current batch and the input count.
 type ProcessBatchFn[B any] func(B, int64) error
 
 // RecoverBatchFn function to handle an error batch.
 // Each RecoverBatchFn can further return error to enable the next RecoverBatchFn in the chain.
 // The RecoverBatchFn must never panic.
+//
+// Accept the current batch and a counter with the previous error.
+// The counter and batch can be controlled by returning an [Error],
+// otherwise it will receive the same arguments of [ProcessBatchFn]
 type RecoverBatchFn[B any] func(B, int64, error) error
 
 // LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.

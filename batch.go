@@ -496,7 +496,7 @@ func (p *runningProcessor[T, B]) PeekContext(ctx context.Context, reader Process
 		}
 	}()
 
-	err := reader(p.batch, p.counter)
+	err := reader(p.batch, p.iCounter)
 	<-p.blocked
 	return err
 }
@@ -676,7 +676,7 @@ func (p *runningProcessor[T, B]) DrainContext(ctx context.Context) error {
 			}
 			// Process the remaining items.
 			batch := p.batch
-			counter := p.counter
+			counter := p.iCounter
 			p.batch = p.init(p.maxItem)
 			p.iCounter = 0
 			p.counter = 0
@@ -742,7 +742,7 @@ func (p *runningProcessor[T, B]) getCloseMaxWait() time.Duration {
 // doProcessAndRelease process the batch and release the lock.
 func (p *runningProcessor[T, B]) doProcessAndRelease(block bool) {
 	batch := p.batch
-	counter := p.counter
+	counter := p.iCounter
 	if block {
 		defer func() {
 			if r := recover(); r != nil {
