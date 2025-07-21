@@ -28,7 +28,7 @@ import (
 
 func main() {
 	sum := int32(0)
-	// First create a batch.Processor by specifying the batch initializer and merger.
+	// First create a *batch.Processor by specifying the batch initializer and merger.
 	//
 	// Initializer will be called to create a new batch, 
 	// here the batch.InitSlice[int] will create a slice.
