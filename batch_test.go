@@ -778,3 +778,46 @@ func TestPeek(t *testing.T) {
 		t.Fatalf("sum is %d != 10", sum)
 	}
 }
+
+func TestCustomCounter(t *testing.T) {
+	touched := int32(0)
+
+	processor := NewSelfMapProcessor[int, int](func(i int) int {
+		return i
+	}, nil).
+		Configure(WithMaxItem(11), WithMaxWait(Unset)).
+		Run(func(m map[int]int, i int64) error {
+			atomic.AddInt32(&touched, 1)
+			if i != 110 {
+				t.Fatal("Input counter is not correct")
+			}
+			return nil
+		}, WithBatchCounter(CountMapKeys[int, int]()))
+
+	for i := 0; i < 100; i++ {
+		processor.Put(1)
+	}
+
+	if processor.ItemCount() != 1 {
+		t.Fatal("Counter is not correct")
+	}
+
+	if atomic.LoadInt32(&touched) > 0 {
+		t.Fatal("Touched when counter is not reached limit")
+	}
+
+	for i := 0; i < 10; i++ {
+		processor.Put(i + 1)
+	}
+
+	if processor.ItemCount() != 10 {
+		t.Fatal("Counter is not correct")
+	}
+
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
+	if atomic.LoadInt32(&touched) != 1 {
+		t.Fatal("Batch not being processed")
+	}
+}
