@@ -47,7 +47,7 @@ func main() {
 }
 
 var (
-	_ batch.Future[int] = (*WaitedItem)(nil)
+	_ batch.IFuture[int] = (*WaitedItem)(nil)
 )
 
 type WaitedItem struct {

@@ -13,7 +13,7 @@ func BenchmarkLoad(b *testing.B) {
 		for b.Loop() {
 			b.StopTimer()
 			ctx := context.Background()
-			waits := make([]*LoadFuture[int], 0, 100_000)
+			waits := make([]*Future[int], 0, 100_000)
 			sum := 0
 			b.StartTimer()
 

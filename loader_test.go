@@ -17,7 +17,7 @@ func TestBatchedLoad(t *testing.T) {
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()
-	loadings := make([]*LoadFuture[int], 0, 55_000)
+	loadings := make([]*Future[int], 0, 55_000)
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
@@ -59,7 +59,7 @@ func TestBatchedLoadAll(t *testing.T) {
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()
-	loadings := make([]map[int]*LoadFuture[int], 0, 55_000)
+	loadings := make([]map[int]*Future[int], 0, 55_000)
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
@@ -107,7 +107,7 @@ func TestBatchedLoadCancel(t *testing.T) {
 		})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	loadings := make([]*LoadFuture[int], 0, 15_000)
+	loadings := make([]*Future[int], 0, 15_000)
 
 	for i := 0; i < 10_000; i++ {
 		loadings = append(loadings, loader.LoadContext(ctx, 1))
@@ -249,7 +249,7 @@ func TestStopContext(t *testing.T) {
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()
-	loadings := make([]*LoadFuture[int], 0, 10_000)
+	loadings := make([]*Future[int], 0, 10_000)
 	for i := 0; i < 10_000; i++ {
 		loadings = append(loadings, loader.LoadContext(ctx, 1))
 	}

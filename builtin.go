@@ -5,8 +5,8 @@ import (
 	"log/slog"
 )
 
-// Future is a future that can be used to get the result of a task.
-type Future[T any] interface {
+// IFuture is a future that can be used to get the result of a task.
+type IFuture[T any] interface {
 	// Get wait until the result is available.
 	Get() (T, error)
 	// GetContext wait until the result is available.
