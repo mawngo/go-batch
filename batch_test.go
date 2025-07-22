@@ -6,6 +6,7 @@ import (
 	"go.uber.org/goleak"
 	"log/slog"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -44,6 +45,50 @@ func TestBatched(t *testing.T) {
 	if err := processor.Close(); err != nil {
 		t.Fatalf("error closing processor: %v", err)
 	}
+	if sum != 2_000_000 {
+		t.Fatalf("sum is %d != 2_000_000", sum)
+	}
+}
+
+func TestBatchedMultiGoroutine(t *testing.T) {
+	sum := int32(0)
+	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		Configure(WithMaxItem(10)).
+		Run(summing(&sum))
+
+	wg := sync.WaitGroup{}
+	for i := 0; i < 500_000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			processor.Put(1)
+		}()
+	}
+	for i := 0; i < 500_000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			processor.PutContext(context.Background(), 1)
+		}()
+	}
+	for i := 0; i < 50_000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			processor.PutAll(new1x10Slice())
+		}()
+	}
+	for i := 0; i < 50_000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			processor.PutAllContext(context.Background(), new1x10Slice())
+		}()
+	}
+	if err := processor.Close(); err != nil {
+		t.Fatalf("error closing processor: %v", err)
+	}
+	wg.Wait()
 	if sum != 2_000_000 {
 		t.Fatalf("sum is %d != 2_000_000", sum)
 	}

@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -16,7 +17,7 @@ func TestBatchedLoad(t *testing.T) {
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()
-	loadings := make([]*LoadFuture[int], 0, 500_000)
+	loadings := make([]*LoadFuture[int], 0, 55_000)
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
@@ -26,6 +27,12 @@ func TestBatchedLoad(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		go func() {
 			loader.LoadContext(ctx, 1)
+		}()
+	}
+
+	for i := 0; i < 1000; i++ {
+		go func() {
+			loader.Load(1)
 		}()
 	}
 
@@ -52,7 +59,7 @@ func TestBatchedLoadAll(t *testing.T) {
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()
-	loadings := make([]map[int]*LoadFuture[int], 0, 50_000)
+	loadings := make([]map[int]*LoadFuture[int], 0, 55_000)
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
@@ -62,6 +69,12 @@ func TestBatchedLoadAll(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		go func() {
 			loader.LoadAllContext(ctx, []int{1, 2, 3})
+		}()
+	}
+
+	for i := 0; i < 1000; i++ {
+		go func() {
+			loader.LoadAll([]int{1, 2})
 		}()
 	}
 
@@ -94,7 +107,7 @@ func TestBatchedLoadCancel(t *testing.T) {
 		})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	loadings := make([]*LoadFuture[int], 0, 500_000)
+	loadings := make([]*LoadFuture[int], 0, 15_000)
 
 	for i := 0; i < 10_000; i++ {
 		loadings = append(loadings, loader.LoadContext(ctx, 1))
@@ -226,6 +239,37 @@ func TestBatchedLoadDisabled(t *testing.T) {
 	}
 	if sum != 20_000 {
 		t.Fatalf("sum is %d != 20_000", touched)
+	}
+}
+
+func TestStopContext(t *testing.T) {
+	touched := int32(0)
+	loader := NewLoader[int, int]().
+		Configure(WithMaxItem(10), WithMaxWait(Unset)).
+		Run(loadMapInt1(&touched))
+
+	ctx := context.Background()
+	loadings := make([]*LoadFuture[int], 0, 10_000)
+	for i := 0; i < 10_000; i++ {
+		loadings = append(loadings, loader.LoadContext(ctx, 1))
+	}
+	if touched > 0 {
+		t.Fatalf("touched when limit not reached")
+	}
+	if err := loader.StopContext(ctx); err != nil {
+		panic(err)
+	}
+	for _, loading := range loadings {
+		if !loading.IsDone() {
+			t.Fatalf("not complete after stopped")
+		}
+		_, err := loading.Get()
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("invalid error when stop %v", err)
+		}
+	}
+	if touched > 0 {
+		t.Fatalf("touched when calling stop")
 	}
 }
 
