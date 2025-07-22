@@ -135,6 +135,15 @@ func WithBatchCounter[B any](count func(B, int64) int64) RunOption[B] {
 	}
 }
 
+// WithBatchLoaderCountInput unset the current count function.
+// Typically used for [Loader] to specify that it should use the number of pending load requests for limit
+// instead of the number of pending keys.
+func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
+	return func(c *runConfig[LoadKeys[K]]) {
+		c.count = nil
+	}
+}
+
 // WithBatchSplitter split the batch into multiple smaller batch.
 // When concurrency > 0 and [SplitBatchFn] are set,
 // the processor will split the batch and process across multiple threads,

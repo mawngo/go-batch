@@ -37,11 +37,11 @@ type ILoader[K comparable, T any] interface {
 	// Cancel the context may stop the loader from loading the key.
 	GetAllContext(ctx context.Context, keys []K) (map[K]T, error)
 
-	// Load registers a key to be loaded and return a [Future] for waiting for the result.
+	// Load registers a key to be loaded and return a [LoadFuture] for waiting for the result.
 	// This method can block until the loader is available for loading new batch.
 	// It is recommended to use [ILoader.LoadContext] instead.
 	Load(key K) *LoadFuture[T]
-	// LoadContext registers a key to be loaded and return a [Future] for waiting for the result.
+	// LoadContext registers a key to be loaded and return a [LoadFuture] for waiting for the result.
 	//
 	// Context can be used to provide deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
@@ -52,7 +52,7 @@ type ILoader[K comparable, T any] interface {
 	// and may block indefinitely.
 	// It is recommended to use [ILoader.LoadAllContext] instead.
 	LoadAll(keys []K) map[K]*LoadFuture[T]
-	// LoadAllContext registers keys to be loaded and return a [Future] for waiting for the combined result.
+	// LoadAllContext registers keys to be loaded and return a [LoadFuture] for waiting for the combined result.
 	//
 	// Context can be used to provide deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
@@ -103,9 +103,9 @@ var ErrLoadMissingResult = errors.New("empty missing result for key")
 //
 // Call [LoaderSetup.Run] with a handler to create a [Loader] that can load item.
 // By default, the processor operates with the following configuration:
-// - WithMaxConcurrency: Unset
-// - WithMaxWait: 20ms
-// - WithMaxItem: 1000.
+// - WithMaxConcurrency: Unset (unlimited)
+// - WithMaxItem: 1000 (count keys)
+// - WithMaxWait: 16ms.
 func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 	s := LoaderSetup[K, T]{
 		missingResultError: ErrLoadMissingResult,
@@ -130,7 +130,7 @@ func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 }
 
 // LoaderSetup batch loader that is in setup phase (not running)
-// You cannot load item using this loader yet, use Run to create a Loader that can load item.
+// You cannot load item using this loader yet, use [LoaderSetup.Run] to create a [Loader] that can load item.
 // See [Option] for available options.
 type LoaderSetup[K comparable, T any] struct {
 	setup              ProcessorSetup[K, LoadKeys[K]]
@@ -149,8 +149,7 @@ type Loader[K comparable, T any] struct {
 	I       int32
 }
 
-// Configure apply Option to this processor.
-// Each Configure call creates a new processor.
+// Configure apply [Option] to this loader setup.
 func (p LoaderSetup[K, T]) Configure(options ...Option) LoaderSetup[K, T] {
 	p.setup = p.setup.Configure(options...)
 	return p
