@@ -282,6 +282,7 @@ func (l *Loader[K, T]) LoadContext(ctx context.Context, key K) *Future[T] {
 // and may block indefinitely.
 // It is recommended to use [Loader.GetAllContext] instead.
 func (l *Loader[K, T]) GetAll(keys []K) (map[K]T, error) {
+	//nolint:staticcheck
 	return l.GetAllContext(nil, keys)
 }
 

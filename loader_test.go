@@ -99,11 +99,9 @@ func TestBatchedLoadAll(t *testing.T) {
 func TestBatchedLoadCancel(t *testing.T) {
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(100), WithMaxWait(Unset)).
-		Run(func(batch LoadKeys[int], count int64) (map[int]int, error) {
-			select {
-			case <-batch.Ctx.Done():
-				return nil, batch.Ctx.Err()
-			}
+		Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
+			<-batch.Ctx.Done()
+			return nil, batch.Ctx.Err()
 		})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -137,7 +135,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(100), WithMaxWait(Unset)).
-		Run(func(batch LoadKeys[int], count int64) (map[int]int, error) {
+		Run(func(_ LoadKeys[int], _ int64) (map[int]int, error) {
 			atomic.AddInt32(&touched, 1)
 			return nil, nil
 		})
