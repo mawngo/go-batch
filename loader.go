@@ -186,6 +186,11 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 	if err == nil {
 		err = l.missingResultError
 	}
+
+	if len(batch.Keys) == 0 {
+		return nil
+	}
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	for _, key := range batch.Keys {
