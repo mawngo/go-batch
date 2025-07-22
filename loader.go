@@ -243,13 +243,15 @@ func (l *Loader[K, T]) LoadContext(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
 
 	l.processor.MergeContext(ctx, key, func(batch LoadKeys[K], _ K) LoadKeys[K] {
-		if ctx.Err() == nil {
-			batch.Ctx = ctx
-		} else {
-			res = &Future[T]{
-				err: ctx.Err(),
+		if ctx != nil {
+			if ctx.Err() == nil {
+				batch.Ctx = ctx
+			} else {
+				res = &Future[T]{
+					err: ctx.Err(),
+				}
+				return batch
 			}
-			return batch
 		}
 
 		// Check if the key is already in the batch.
@@ -321,13 +323,15 @@ func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Futu
 	futures := make(map[K]*Future[T], len(keys))
 
 	l.processor.MergeAllContext(ctx, keys, func(batch LoadKeys[K], key K) LoadKeys[K] {
-		if ctx.Err() == nil {
-			batch.Ctx = ctx
-			futures[key] = &Future[T]{
-				err: ctx.Err(),
+		if ctx != nil {
+			if ctx.Err() == nil {
+				batch.Ctx = ctx
+				futures[key] = &Future[T]{
+					err: ctx.Err(),
+				}
+			} else {
+				return batch
 			}
-		} else {
-			return batch
 		}
 
 		// Check if the key is already in the batch.
