@@ -16,7 +16,9 @@ func main() {
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built initializers and mergers for common data types,
 	// but you can always define your own initializer and merger.
-	setup := batch.NewProcessor(batch.InitSlice[int], batch.AddToSlice[int]).
+	//
+	// This equals to: batch.NewSliceProcessor().
+	setup := batch.NewProcessor(batch.ToSlice[int]()).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached or the max wait is reached.
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), batch.WithMaxWait(30*time.Second))

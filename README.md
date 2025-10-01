@@ -40,6 +40,8 @@ func main() {
 	// The library already defined some built-in 
 	// initializers and mergers for common data types,
 	// but you can always define your own initializer and merger.
+	//
+	// This equals to: batch.NewSliceProcessor().
 	setup := batch.NewProcessor(batch.InitSlice[int], batch.AddToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached 
@@ -77,6 +79,10 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 }
 ```
 
+There are also built-in shortcuts for common processor `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
+For simple use cases, you can use those shortcuts to avoid boilerplate code, also those functions are unlikely to be
+changed in the future major version.
+
 More usage can be found in [test](batch_test.go) and [examples](examples)
 
 ### Context and Cancellation
@@ -90,6 +96,9 @@ the batch.
 
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
+
+We recommend using context variants, as non-context variants will likely be removed in the next major version of this
+library.
 
 ### Waiting for an item to be processed
 
