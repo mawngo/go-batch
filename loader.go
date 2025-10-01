@@ -14,6 +14,7 @@ var (
 	_ IFuture[any]      = (*Future[any])(nil)
 )
 
+// ILoader provides common methods of a [Loader].
 type ILoader[K comparable, T any] interface {
 	// Get registers a key to be loaded and wait for it to be loaded.
 	// This method can block until the loader is available for loading new batch.
@@ -440,6 +441,7 @@ func (r *Future[T]) GetContext(ctx context.Context) (T, error) {
 	return r.result, r.err
 }
 
+// IsDone return whether the future is completed.
 func (r *Future[T]) IsDone() bool {
 	if r.ch == nil {
 		return true

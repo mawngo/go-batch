@@ -55,7 +55,7 @@ func main() {
 }
 
 func load(p *int32) batch.LoadBatchFn[int, string] {
-	return func(batch batch.LoadKeys[int], count int64) (map[int]string, error) {
+	return func(batch batch.LoadKeys[int], _ int64) (map[int]string, error) {
 		atomic.AddInt32(p, 1)
 		if len(batch.Keys) == 0 {
 			// This could happen if you provide an alternate counting method.

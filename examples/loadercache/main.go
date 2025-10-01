@@ -12,7 +12,7 @@ func main() {
 	}
 	// First create a batch.LoaderSetup
 	loader := batch.NewLoader[int, string]().
-		Run(func(batch batch.LoadKeys[int], count int64) (map[int]string, error) {
+		Run(func(batch batch.LoadKeys[int], _ int64) (map[int]string, error) {
 			// Simulate getting the value from somewhere.
 			res := make(map[int]string, len(batch.Keys))
 			for _, k := range batch.Keys {

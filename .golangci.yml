@@ -7,9 +7,14 @@ output:
   show-stats: false
 
 linters:
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck

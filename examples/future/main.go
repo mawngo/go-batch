@@ -68,7 +68,7 @@ func (w *WaitedItem) GetContext(ctx context.Context) (int, error) {
 	}
 	select {
 	case <-ctx.Done():
-	case _, _ = <-w.ch:
+	case <-w.ch:
 	}
 	return w.item, w.err
 }
