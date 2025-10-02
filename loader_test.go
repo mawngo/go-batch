@@ -11,77 +11,79 @@ import (
 )
 
 func TestBatchedLoad(t *testing.T) {
-	touched := int32(0)
-	loader := NewLoader[int, int]().
-		Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-		Run(loadMapInt1(&touched))
+	t.Run("Load", func(t *testing.T) {
+		touched := int32(0)
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
+			Run(loadMapInt1(&touched))
 
-	ctx := context.Background()
-	loadings := make([]*Future[int], 0, 55_000)
-	sum := 0
+		ctx := context.Background()
+		loadings := make([]*Future[int], 0, 55_000)
+		sum := 0
 
-	for i := 0; i < 50_000; i++ {
-		loadings = append(loadings, loader.Load(ctx, 1))
-	}
+		for i := 0; i < 50_000; i++ {
+			loadings = append(loadings, loader.Load(ctx, 1))
+		}
 
-	for i := 0; i < 1000; i++ {
-		go func() {
-			loader.Load(ctx, 1)
-		}()
-	}
+		for i := 0; i < 1000; i++ {
+			go func() {
+				loader.Load(ctx, 1)
+			}()
+		}
 
-	for _, loading := range loadings {
-		v, _ := loading.Get(ctx)
-		sum += v
-	}
-
-	if err := loader.Close(ctx); err != nil {
-		panic(err)
-	}
-	if sum != 50_000 {
-		t.Fatalf("sum is %d != 50_000", touched)
-	}
-	if touched > 1 {
-		t.Fatalf("touched too many time %d > 1", touched)
-	}
-}
-
-func TestBatchedLoadAll(t *testing.T) {
-	touched := int32(0)
-	loader := NewLoader[int, int]().
-		Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-		Run(loadMapInt1(&touched))
-
-	ctx := context.Background()
-	loadings := make([]map[int]*Future[int], 0, 55_000)
-	sum := 0
-
-	for i := 0; i < 50_000; i++ {
-		loadings = append(loadings, loader.LoadAll(ctx, []int{1, 2, 3}))
-	}
-
-	for i := 0; i < 1000; i++ {
-		go func() {
-			loader.LoadAll(ctx, []int{1, 2, 3})
-		}()
-	}
-
-	for _, m := range loadings {
-		for _, loading := range m {
+		for _, loading := range loadings {
 			v, _ := loading.Get(ctx)
 			sum += v
 		}
-	}
 
-	if err := loader.Close(ctx); err != nil {
-		panic(err)
-	}
-	if sum != 150_000 {
-		t.Fatalf("sum is %d != 150_000", touched)
-	}
-	if touched > 1 {
-		t.Fatalf("touched too many time %d > 1", touched)
-	}
+		if err := loader.Close(ctx); err != nil {
+			panic(err)
+		}
+		if sum != 50_000 {
+			t.Fatalf("sum is %d != 50_000", touched)
+		}
+		if touched > 1 {
+			t.Fatalf("touched too many time %d > 1", touched)
+		}
+	})
+
+	t.Run("LoadAll", func(t *testing.T) {
+		touched := int32(0)
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
+			Run(loadMapInt1(&touched))
+
+		ctx := context.Background()
+		loadings := make([]map[int]*Future[int], 0, 55_000)
+		sum := 0
+
+		for i := 0; i < 50_000; i++ {
+			loadings = append(loadings, loader.LoadAll(ctx, []int{1, 2, 3}))
+		}
+
+		for i := 0; i < 1000; i++ {
+			go func() {
+				loader.LoadAll(ctx, []int{1, 2, 3})
+			}()
+		}
+
+		for _, m := range loadings {
+			for _, loading := range m {
+				v, _ := loading.Get(ctx)
+				sum += v
+			}
+		}
+
+		if err := loader.Close(ctx); err != nil {
+			panic(err)
+		}
+		if sum != 150_000 {
+			t.Fatalf("sum is %d != 150_000", touched)
+		}
+		if touched > 1 {
+			t.Fatalf("touched too many time %d > 1", touched)
+		}
+	})
 }
 
 func TestBatchedLoadCancel(t *testing.T) {
