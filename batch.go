@@ -22,82 +22,47 @@ type ProcessorSetup[T any, B any] struct {
 // IProcessor provides common methods of a [Processor].
 type IProcessor[T any, B any] interface {
 	// Put add item to the processor.
-	// This method can block until the processor is available for processing new batch,
-	// and may block indefinitely.
-	// It is recommended to use [IProcessor.PutContext] instead.
-	Put(item T)
-	// PutAll add all specified item to the processor.
-	// This method can block until the processor is available for processing new batch,
-	// and may block indefinitely.
-	// It is recommended to use [IProcessor.PutAllContext] instead.
-	PutAll(items []T)
-	// PutContext add item to the processor.
 	// If the context is canceled and the item is not added, then this method will return false.
 	// The context passed in only control the put step, after item added to the processor,
 	// the processing will not be canceled by this context.
-	PutContext(ctx context.Context, item T) bool
-	// PutAllContext add all items to the processor.
+	Put(ctx context.Context, item T) bool
+	// PutAll add all items to the processor.
 	// If the context is canceled, then this method will return the number of items added to the processor.
-	PutAllContext(ctx context.Context, items []T) int
+	PutAll(ctx context.Context, items []T) int
 
 	// Merge add item to the processor using merge function.
-	// This method can block until the processor is available for processing new batch,
-	// and may block indefinitely.
-	// It is recommended to use [IProcessor.MergeContext] instead.
-	Merge(item T, merge MergeToBatchFn[B, T])
-	// MergeAll add all items to the processor using merge function.
-	// This method can block until the processor is available for processing new batch,
-	// and may block indefinitely.
-	// It is recommended to use [IProcessor.MergeAllContext] instead.
-	MergeAll(items []T, merge MergeToBatchFn[B, T])
-	// MergeContext add item to the processor using merge function.
 	// If the context is canceled and the item is not added, then this method will return false.
 	// The context passed in only control the put step, after item added to the processor,
 	// the processing will not be canceled by this context.
-	MergeContext(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool
-	// MergeAllContext add all items to the processor using merge function.
+	Merge(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool
+	// MergeAll add all items to the processor using merge function.
 	// If the context is canceled, then this method will return the number of items added to the processor.
-	MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
+	MergeAll(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
 	// Peek access the current batch using provided function.
-	// This method can block until the processor is available.
-	// It is recommended to use [IProcessor.PeekContext] instead.
 	// This method does not count as processing the batch, the batch will still be processed.
-	Peek(reader ProcessBatchFn[B]) error
-	// PeekContext access the current batch using provided function.
-	// This method does not count as processing the batch, the batch will still be processed.
-	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
+	Peek(ctx context.Context, reader ProcessBatchFn[B]) error
 
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
-	ItemCount() int64
-	// ItemCountContext return number of current item in processor.
 	// If the context is canceled, then this method will return approximate item count and false.
-	ItemCountContext(ctx context.Context) (int64, bool)
+	ItemCount(ctx context.Context) (int64, bool)
 	// Close stop the processor.
-	// This method may process the leftover branch on caller thread.
-	// The implementation of this method may vary, but it must never wait indefinitely.
-	Close() error
-	// CloseContext stop the processor.
 	// This method may process the left-over batch on caller thread.
 	// Context can be used to provide deadline for this method.
-	CloseContext(ctx context.Context) error
-	// StopContext stop the processor.
+	Close(ctx context.Context) error
+	// Stop the processor.
 	// This method does not process leftover batch.
-	StopContext(ctx context.Context) error
-	// DrainContext force process batch util the batch is empty.
+	Stop(ctx context.Context) error
+	// Drain force process batch util the batch is empty.
 	// This method may process the batch on caller thread.
 	// Context can be used to provide deadline for this method.
-	DrainContext(ctx context.Context) error
-	// FlushContext force process the current batch.
-	// This method may process the batch on caller thread.
-	// Context can be used to provide deadline for this method.
-	FlushContext(ctx context.Context) error
+	Drain(ctx context.Context) error
 	// Flush force process the current batch.
 	// This method may process the batch on caller thread.
-	// It is recommended to use [IProcessor.FlushContext] instead.
-	Flush()
+	// Context can be used to provide deadline for this method.
+	Flush(ctx context.Context) error
 }
 
 // Processor a processor that is running and can process item.
@@ -155,16 +120,8 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 }
 
 // ItemCount return number of current item in processor.
-// This method will block the processor for accurate counting.
-// It is recommended to use [Processor.ItemCountContext] instead.
-func (p *Processor[T, B]) ItemCount() int64 {
-	cnt, _ := p.ItemCountContext(context.Background())
-	return cnt
-}
-
-// ItemCountContext return number of current item in processor.
 // If the context is canceled, then this method will return approximate item count and false.
-func (p *Processor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
+func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 	select {
 	case p.blocked <- struct{}{}:
 	case <-ctx.Done():
@@ -367,28 +324,12 @@ func (p *Processor[T, B]) IsDisabled() bool {
 }
 
 // Put add item to the processor.
-// This method can block until the processor is available for processing new batch.
-// It is recommended to use [Processor.PutContext] instead.
-func (p *Processor[T, B]) Put(item T) {
-	//nolint:staticcheck
-	p.PutContext(nil, item)
+func (p *Processor[T, B]) Put(ctx context.Context, item T) bool {
+	return p.Merge(ctx, item, p.merge)
 }
 
-// PutContext add item to the processor.
-func (p *Processor[T, B]) PutContext(ctx context.Context, item T) bool {
-	return p.MergeContext(ctx, item, p.merge)
-}
-
-// Merge add item to the processor.
-// This method can block until the processor is available for processing new batch.
-// It is recommended to use [Processor.MergeContext] instead.
-func (p *Processor[T, B]) Merge(item T, merge MergeToBatchFn[B, T]) {
-	//nolint:staticcheck
-	p.MergeContext(nil, item, merge)
-}
-
-// MergeContext add item to the processor using merge function.
-func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool {
+// Merge add item to the processor using merge function.
+func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool {
 	if ctx != nil && ctx.Err() != nil {
 		return false
 	}
@@ -447,18 +388,9 @@ func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeT
 }
 
 // Peek access the current batch using provided function.
-// This method can block until the processor is available.
-// It is recommended to use [Processor.PeekContext] instead.
 // This method does not count as processing the batch, the batch will still be processed.
-func (p *Processor[T, B]) Peek(reader ProcessBatchFn[B]) error {
-	//nolint:staticcheck
-	return p.PeekContext(nil, reader)
-}
-
-// PeekContext access the current batch using provided function.
-// This method does not count as processing the batch, the batch will still be processed.
-func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error {
-	if ctx != nil && ctx.Err() != nil {
+func (p *Processor[T, B]) Peek(ctx context.Context, reader ProcessBatchFn[B]) error {
+	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 
@@ -466,16 +398,10 @@ func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn
 		return reader(p.init(1), 0)
 	}
 
-	// Select is slow, and most of the old codes are using Put without Context,
-	// so we allow nil context to preserve performance.
-	if ctx != nil {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case p.blocked <- struct{}{}:
-		}
-	} else {
-		p.blocked <- struct{}{}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case p.blocked <- struct{}{}:
 	}
 
 	// Always release in case of panic.
@@ -494,35 +420,19 @@ func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn
 	return err
 }
 
-// PutAll add all item to the processor.
-// This method will block until all items were put into the processor.
-// It is recommended to use [Processor.PutAllContext] instead.
-func (p *Processor[T, B]) PutAll(items []T) {
-	//nolint:staticcheck
-	p.PutAllContext(nil, items)
-}
-
-// PutAllContext add all items to the processor.
+// PutAll add all items to the processor.
 // If the context is canceled, then this method will return the number of items added to the processor.
 // The processing order is the same as the input list,
 // so the output can also be used to determine the next item to process if you want to retry or continue processing.
-func (p *Processor[T, B]) PutAllContext(ctx context.Context, items []T) int {
-	return p.MergeAllContext(ctx, items, p.merge)
+func (p *Processor[T, B]) PutAll(ctx context.Context, items []T) int {
+	return p.MergeAll(ctx, items, p.merge)
 }
 
-// MergeAll add all item to the processor using merge function.
-// This method will block until all items were put into the processor.
-// It is recommended to use [Processor.MergeAllContext] instead.
-func (p *Processor[T, B]) MergeAll(items []T, merge MergeToBatchFn[B, T]) {
-	//nolint:staticcheck
-	p.MergeAllContext(nil, items, merge)
-}
-
-// MergeAllContext add all items to the processor using merge function.
+// MergeAll add all items to the processor using merge function.
 // If the context is canceled, then this method will return the number of items added to the processor.
 // The processing order is the same as the input list,
 // so the output can also be used to determine the next item to process if you want to retry or continue processing.
-func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int {
+func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int {
 	if len(items) == 0 {
 		return 0
 	}
@@ -548,18 +458,14 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 
 	ok := 0
 	for ok < len(items) {
-		if ctx != nil && ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return ok
 		}
 
-		if ctx != nil {
-			select {
-			case <-ctx.Done():
-				return ok
-			case p.blocked <- struct{}{}:
-			}
-		} else {
-			p.blocked <- struct{}{}
+		select {
+		case <-ctx.Done():
+			return ok
+		case p.blocked <- struct{}{}:
 		}
 
 		for {
@@ -601,25 +507,24 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 
 // Close stop the processor.
 // This method will process the leftover branch on caller thread.
-// Return error if maxCloseWait passed.
-// Timeout can be configured by [WithMaxCloseWait].
-// See getCloseMaxWait for detail.
-func (p *Processor[T, B]) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), p.getCloseMaxWait())
-	defer cancel()
-	return p.CloseContext(ctx)
-}
-
-// CloseContext stop the processor.
-// This method will process the leftover branch on caller thread.
-// Context can be used to provide deadline for this method.
-func (p *Processor[T, B]) CloseContext(ctx context.Context) error {
+//
+// Context can be used to provide deadline for this method,
+// Context does not affect already in processing batch.
+func (p *Processor[T, B]) Close(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
+
+	if ctx == nil {
+		// Support for legacy close without context.
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), max(p.maxWait*2, 15*time.Second))
+		defer cancel()
+	}
+
 	p.closed <- struct{}{}
 	slog.Debug("waiting for leftover batch to finish")
-	if err := p.DrainContext(ctx); err != nil {
+	if err := p.Drain(ctx); err != nil {
 		return err
 	}
 	if p.concurrentLimiter != nil {
@@ -634,9 +539,9 @@ func (p *Processor[T, B]) CloseContext(ctx context.Context) error {
 	return nil
 }
 
-// StopContext stop the processor.
+// Stop the processor.
 // This method does not process leftover batch.
-func (p *Processor[T, B]) StopContext(ctx context.Context) error {
+func (p *Processor[T, B]) Stop(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
@@ -653,10 +558,10 @@ func (p *Processor[T, B]) StopContext(ctx context.Context) error {
 	return nil
 }
 
-// DrainContext force process batch util the batch is empty.
+// Drain force process batch util the batch is empty.
 // This method always processes the batch on caller thread.
 // ctx can be used to provide deadline for this method.
-func (p *Processor[T, B]) DrainContext(ctx context.Context) error {
+func (p *Processor[T, B]) Drain(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
@@ -689,10 +594,10 @@ func (p *Processor[T, B]) DrainContext(ctx context.Context) error {
 	return nil
 }
 
-// FlushContext force process the current batch.
+// Flush force process the current batch.
 // This method may process the batch on caller thread, depend on concurrent and block settings.
 // Context can be used to provide deadline for this method.
-func (p *Processor[T, B]) FlushContext(ctx context.Context) error {
+func (p *Processor[T, B]) Flush(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
@@ -712,28 +617,6 @@ func (p *Processor[T, B]) FlushContext(ctx context.Context) error {
 		return context.DeadlineExceeded
 	}
 	return nil
-}
-
-// Flush force process the current batch.
-// This method may process the batch on caller thread, depend on concurrent and block settings.
-// It is recommended to use [Processor.FlushContext] instead.
-func (p *Processor[T, B]) Flush() {
-	err := p.FlushContext(context.Background())
-	if err != nil {
-		// should never have happened.
-		slog.Error("error flushing batch", slog.Any("err", err))
-	}
-}
-
-func (p *Processor[T, B]) getCloseMaxWait() time.Duration {
-	if p.maxCloseWait > 0 {
-		return p.maxCloseWait
-	}
-	// if maxWait is set, then wait double the time.
-	if p.maxWait > 0 {
-		return p.maxWait * 2
-	}
-	return 15 * time.Second
 }
 
 // doProcessAndRelease process the batch and release the lock.

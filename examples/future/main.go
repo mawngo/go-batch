@@ -26,19 +26,20 @@ func main() {
 
 	waiting := make([]*WaitedItem, 0, 1_000_000)
 
+	ctx := context.Background()
 	for i := 0; i < 1_000_000; i++ {
 		item := &WaitedItem{item: 1}
-		processor.Put(item)
+		processor.Put(ctx, item)
 		waiting = append(waiting, item)
 	}
 
 	sum := 0
 	for _, item := range waiting {
-		v, _ := item.Get()
+		v, _ := item.Get(ctx)
 		sum += v
 	}
 
-	if err := processor.Close(); err != nil {
+	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
 	if sum != 1_000_000 {
@@ -58,11 +59,7 @@ type WaitedItem struct {
 	err  error
 }
 
-func (w *WaitedItem) Get() (int, error) {
-	return w.GetContext(context.Background())
-}
-
-func (w *WaitedItem) GetContext(ctx context.Context) (int, error) {
+func (w *WaitedItem) Get(ctx context.Context) (int, error) {
 	if w.done {
 		return w.item, w.err
 	}

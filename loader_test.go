@@ -21,27 +21,21 @@ func TestBatchedLoad(t *testing.T) {
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
-		loadings = append(loadings, loader.LoadContext(ctx, 1))
+		loadings = append(loadings, loader.Load(ctx, 1))
 	}
 
 	for i := 0; i < 1000; i++ {
 		go func() {
-			loader.LoadContext(ctx, 1)
-		}()
-	}
-
-	for i := 0; i < 1000; i++ {
-		go func() {
-			loader.Load(1)
+			loader.Load(ctx, 1)
 		}()
 	}
 
 	for _, loading := range loadings {
-		v, _ := loading.Get()
+		v, _ := loading.Get(ctx)
 		sum += v
 	}
 
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	if sum != 50_000 {
@@ -63,29 +57,23 @@ func TestBatchedLoadAll(t *testing.T) {
 	sum := 0
 
 	for i := 0; i < 50_000; i++ {
-		loadings = append(loadings, loader.LoadAllContext(ctx, []int{1, 2, 3}))
+		loadings = append(loadings, loader.LoadAll(ctx, []int{1, 2, 3}))
 	}
 
 	for i := 0; i < 1000; i++ {
 		go func() {
-			loader.LoadAllContext(ctx, []int{1, 2, 3})
-		}()
-	}
-
-	for i := 0; i < 1000; i++ {
-		go func() {
-			loader.LoadAll([]int{1, 2})
+			loader.LoadAll(ctx, []int{1, 2, 3})
 		}()
 	}
 
 	for _, m := range loadings {
 		for _, loading := range m {
-			v, _ := loading.Get()
+			v, _ := loading.Get(ctx)
 			sum += v
 		}
 	}
 
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	if sum != 150_000 {
@@ -108,25 +96,28 @@ func TestBatchedLoadCancel(t *testing.T) {
 	loadings := make([]*Future[int], 0, 15_000)
 
 	for i := 0; i < 10_000; i++ {
-		loadings = append(loadings, loader.LoadContext(ctx, 1))
+		loadings = append(loadings, loader.Load(ctx, 1))
 	}
 
 	for i := 0; i < 1000; i++ {
-		m := loader.LoadAllContext(ctx, []int{1, 2})
+		m := loader.LoadAll(ctx, []int{1, 2})
 		for _, loading := range m {
 			loadings = append(loadings, loading)
 		}
 	}
 	cancel()
-	loader.Flush()
+	err := loader.Flush(context.Background())
+	if err != nil {
+		t.Fatalf("error flushing")
+	}
 
 	for _, loading := range loadings {
-		_, err := loading.Get()
+		_, err := loading.Get(context.Background())
 		if err == nil {
 			t.Fatalf("missing error when cancelled")
 		}
 	}
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(context.Background()); err != nil {
 		panic(err)
 	}
 }
@@ -141,19 +132,19 @@ func TestBatchedLoadReuse(t *testing.T) {
 		})
 
 	ctx := context.Background()
-	loading1 := loader.LoadContext(ctx, 1)
-	loading2 := loader.LoadContext(ctx, 2)
+	loading1 := loader.Load(ctx, 1)
+	loading2 := loader.Load(ctx, 2)
 
-	if loader.LoadContext(ctx, 1) != loading1 {
+	if loader.Load(ctx, 1) != loading1 {
 		t.Fatalf("loading not reuse pending future")
 	}
 
-	if loader.LoadContext(ctx, 2) != loading2 {
+	if loader.Load(ctx, 2) != loading2 {
 		t.Fatalf("loading not reuse pending future")
 	}
 
 	for i := 0; i < 1000; i++ {
-		m := loader.LoadAllContext(ctx, []int{1, 2})
+		m := loader.LoadAll(ctx, []int{1, 2})
 		if m[1] != loading1 {
 			t.Fatalf("loading not reuse pending future")
 		}
@@ -167,11 +158,11 @@ func TestBatchedLoadReuse(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if loader.LoadContext(ctx, 1) != loading1 {
+			if loader.Load(ctx, 1) != loading1 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
 			}
 
-			if loader.LoadContext(ctx, 2) != loading2 {
+			if loader.Load(ctx, 2) != loading2 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
 			}
 		}()
@@ -182,7 +173,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m := loader.LoadAllContext(ctx, []int{1, 2})
+			m := loader.LoadAll(ctx, []int{1, 2})
 			if m[1] != loading1 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
 			}
@@ -192,7 +183,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	if touched != 1 {
@@ -210,26 +201,26 @@ func TestBatchedLoadDisabled(t *testing.T) {
 	sum := 0
 
 	for i := 0; i < 10_000; i++ {
-		future := loader.LoadContext(ctx, 1)
+		future := loader.Load(ctx, 1)
 		if !future.IsDone() {
 			t.Fatalf("async load when disabled")
 		}
-		v, _ := future.Get()
+		v, _ := future.Get(ctx)
 		sum += v
 	}
 
 	for i := 0; i < 5_000; i++ {
-		futures := loader.LoadAllContext(ctx, []int{1, 2})
+		futures := loader.LoadAll(ctx, []int{1, 2})
 		for _, future := range futures {
 			if !future.IsDone() {
 				t.Fatalf("async load when disabled")
 			}
-			v, _ := future.Get()
+			v, _ := future.Get(ctx)
 			sum += v
 		}
 	}
 
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	if touched != 15_000 {
@@ -249,19 +240,19 @@ func TestStopContext(t *testing.T) {
 	ctx := context.Background()
 	loadings := make([]*Future[int], 0, 10_000)
 	for i := 0; i < 10_000; i++ {
-		loadings = append(loadings, loader.LoadContext(ctx, 1))
+		loadings = append(loadings, loader.Load(ctx, 1))
 	}
 	if touched > 0 {
 		t.Fatalf("touched when limit not reached")
 	}
-	if err := loader.StopContext(ctx); err != nil {
+	if err := loader.Stop(ctx); err != nil {
 		panic(err)
 	}
 	for _, loading := range loadings {
 		if !loading.IsDone() {
 			t.Fatalf("not complete after stopped")
 		}
-		_, err := loading.Get()
+		_, err := loading.Get(ctx)
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("invalid error when stop %v", err)
 		}

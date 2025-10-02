@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/mawngo/go-batch/v2"
 	"sync/atomic"
 	"time"
@@ -27,14 +28,15 @@ func main() {
 	// This will create a *batch.Processor that can accept item.
 	processor := setup.Run(summing(&sum))
 
+	ctx := context.Background()
 	for i := 0; i < 1_000_000; i++ {
 		// Add item to the processor.
-		processor.Put(1)
+		processor.Put(ctx, 1)
 	}
 	// Remember to close the running processor before your application stopped.
 	// Closing will force the processor to process the left-over item,
 	// any item added after closing is not guarantee to be processed.
-	if err := processor.Close(); err != nil {
+	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
 	if sum != 1_000_000 {

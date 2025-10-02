@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/mawngo/go-batch/v2"
 	"strconv"
 	"sync/atomic"
@@ -20,6 +21,7 @@ func main() {
 		// This will create a *batch.Loader that can accept item.
 		Run(load(&loadedCount))
 
+	ctx := context.Background()
 	for i := 0; i < 100_000; i++ {
 		k := i % 10
 		go func() {
@@ -28,7 +30,7 @@ func main() {
 			// future := loader.Load(k)
 			// ...
 			// v, err := future.Get()
-			v, err := loader.Get(k)
+			v, err := loader.Get(ctx, k)
 
 			if err != nil {
 				panic(err)
@@ -42,7 +44,7 @@ func main() {
 	// Closing will force the loader to load the left-over request,
 	// any load request after the loader is closed is not guarantee to be processed,
 	// and may block forever.
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	// If you do not want to load left over request, then use StopContext instead.

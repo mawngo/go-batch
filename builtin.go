@@ -1,18 +1,8 @@
 package batch
 
 import (
-	"context"
 	"log/slog"
 )
-
-// IFuture is a future that can be used to get the result of a task.
-type IFuture[T any] interface {
-	// Get wait until the result is available.
-	Get() (T, error)
-	// GetContext wait until the result is available.
-	// The context can be used to cancel the wait (not the task).
-	GetContext(ctx context.Context) (T, error)
-}
 
 // KeyVal is a tuple of key and value.
 type KeyVal[K any, V any] struct {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/mawngo/go-batch/v2"
 	"strconv"
 	"sync"
@@ -28,7 +29,7 @@ func main() {
 			println(v + " cached")
 		}
 
-		v, _ := loader.Get(1)
+		v, _ := loader.Get(context.Background(), 1)
 		println(v + " fresh")
 	}()
 }

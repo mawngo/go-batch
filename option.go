@@ -20,7 +20,6 @@ type processorConfig struct {
 	concurrentLimit        int64
 	concurrentLimiter      *semaphore.Weighted
 	maxWait                time.Duration
-	maxCloseWait           time.Duration
 }
 
 // Option general options for batch processor.
@@ -63,13 +62,6 @@ func WithHardMaxWait(wait time.Duration) Option {
 func WithAggressiveMode() Option {
 	return func(p *processorConfig) {
 		p.aggressive = true
-	}
-}
-
-// WithMaxCloseWait set the max waiting time when closing the processor.
-func WithMaxCloseWait(wait time.Duration) Option {
-	return func(p *processorConfig) {
-		p.maxCloseWait = wait
 	}
 }
 

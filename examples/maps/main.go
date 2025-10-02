@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/mawngo/go-batch/v2"
 	"sync"
 )
@@ -12,10 +13,12 @@ func main() {
 	processor := batch.NewSelfMapProcessor[int, int](mod2, nil).
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
 		Run(summingValByKey(count))
+
+	ctx := context.Background()
 	for i := 0; i < 1_000_000; i++ {
-		processor.Put(i)
+		processor.Put(ctx, i)
 	}
-	if err := processor.Close(); err != nil {
+	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
 	// batch size is 10 so total batch is 100_000.
