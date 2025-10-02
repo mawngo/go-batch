@@ -82,7 +82,7 @@ func TestBatched(t *testing.T) {
 
 	t.Run("Batched (BlockWhileProcessing)", func(t *testing.T) {
 		sum := int32(0)
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithBlockWhileProcessing(), WithMaxItem(10)).
 			Run(summing(&sum))
 		runSumPutTest(t, processor, &sum)
@@ -90,7 +90,7 @@ func TestBatched(t *testing.T) {
 
 	t.Run("Batched (BlockWhileProcessing) (Concurrent)", func(t *testing.T) {
 		sum := int32(0)
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithBlockWhileProcessing(), WithMaxItem(10), WithMaxConcurrency(10)).
 			Run(summing(&sum))
 		runSumPutTest(t, processor, &sum)
@@ -139,7 +139,7 @@ func runSumPutTest(t *testing.T, processor IProcessor[int, []int], sum *int32) {
 
 func TestBatchedMultiGoroutine(t *testing.T) {
 	sum := int32(0)
-	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(10)).
 		Run(summing(&sum))
 
@@ -172,7 +172,7 @@ func TestBatchedSplit(t *testing.T) {
 	maxes := []int{1, 2, 5, 8, 10, 18, 20, 111}
 	for _, m := range maxes {
 		sum := int32(0)
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(10)).
 			Run(summing(&sum), WithBatchSplitter(SplitSliceEqually[int](m)))
 
@@ -193,7 +193,7 @@ func TestBatchedSplit(t *testing.T) {
 }
 
 func TestCloseCancelContext(t *testing.T) {
-	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(func(_ []int, _ int64) error {
 			time.Sleep(100 * time.Second)
@@ -213,7 +213,7 @@ func TestCloseCancelContext(t *testing.T) {
 
 func TestDrain(t *testing.T) {
 	sum := int32(0)
-	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
 		Run(summing(&sum))
 
@@ -239,7 +239,7 @@ func TestDrain(t *testing.T) {
 
 func TestFlush(t *testing.T) {
 	sum := int32(0)
-	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
 		Run(summing(&sum))
 
@@ -551,7 +551,7 @@ func TestCancelContext(t *testing.T) {
 
 	t.Run("Merge", func(t *testing.T) {
 		sum := int32(0)
-		merger := AddToSlice[int]
+		merger := addToSlice[int]
 		processor := NewProcessor(InitSlice[int], func(_ []int, _ int) []int { return nil }).
 			Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 			Run(summing(&sum))
@@ -569,7 +569,7 @@ func TestCancelContext(t *testing.T) {
 
 	t.Run("MergeAll", func(t *testing.T) {
 		sum := int32(0)
-		merger := AddToSlice[int]
+		merger := addToSlice[int]
 		processor := NewProcessor(InitSlice[int], func(_ []int, _ int) []int { return nil }).
 			Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 			Run(summing(&sum))
@@ -587,7 +587,7 @@ func TestCancelContext(t *testing.T) {
 
 	t.Run("Peek", func(t *testing.T) {
 		sum := int32(0)
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 			Run(summing(&sum))
 

@@ -12,14 +12,14 @@ func main() {
 	// First create a batch.ProcessorSetup by specifying the batch initializer and merger.
 	//
 	// Initializer will be called to create a new batch, here the batch.InitSlice[int] will create a slice.
-	// Merger will be called to add item to a batch, here the batch.AddToSlice[int] will add item to the slice.
+	// Merger will be called to add item to a batch, here the addToSlice[int] will add item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built initializers and mergers for common data types,
 	// but you can always define your own initializer and merger.
 	//
 	// This equals to: batch.NewSliceProcessor().
-	setup := batch.NewProcessor(batch.ToSlice[int]()).
+	setup := batch.NewProcessor(batch.InitSlice[int], addToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached or the max wait is reached.
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), batch.WithMaxWait(30*time.Second))
@@ -51,4 +51,10 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 		}
 		return nil
 	}
+}
+
+// addToSlice is [batch.MergeToBatchFn] that add item to a slice.
+// It is recommended to use [batch.NewSliceProcessor], this is just for example.
+func addToSlice[T any](b []T, item T) []T {
+	return append(b, item)
 }
