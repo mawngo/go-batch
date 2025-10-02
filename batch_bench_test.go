@@ -8,7 +8,7 @@ import (
 
 func BenchmarkPut(b *testing.B) {
 	b.Run("Put free1", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -23,7 +23,7 @@ func BenchmarkPut(b *testing.B) {
 	})
 
 	b.Run("Put free3", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -40,7 +40,7 @@ func BenchmarkPut(b *testing.B) {
 	})
 
 	b.Run("Put full1", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -55,7 +55,7 @@ func BenchmarkPut(b *testing.B) {
 	})
 
 	b.Run("Put full3", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -74,7 +74,7 @@ func BenchmarkPut(b *testing.B) {
 
 func BenchmarkPutAll(b *testing.B) {
 	b.Run("PutAll free3", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(Unset), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -89,7 +89,7 @@ func BenchmarkPutAll(b *testing.B) {
 	})
 
 	b.Run("PutAll full3", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(1), WithMaxConcurrency(Unset), WithDisabledDefaultProcessErrorLog(), WithMaxWait(100*time.Hour)).
 			Run(func(_ []int, _ int64) error {
 				return nil
@@ -106,7 +106,7 @@ func BenchmarkPutAll(b *testing.B) {
 
 func BenchmarkPutUnderLoad(b *testing.B) {
 	b.Run("Put 1000x100x4", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(100), WithBlockWhileProcessing(),
 				WithMaxConcurrency(4),
 				WithMaxWait(Unset),
@@ -126,7 +126,7 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 	})
 
 	b.Run("Put 1000x100", func(b *testing.B) {
-		processor := NewProcessor(InitSlice[int], AddToSlice[int]).
+		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(100), WithBlockWhileProcessing(),
 				WithMaxWait(Unset),
 				WithDisabledDefaultProcessErrorLog()).

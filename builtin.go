@@ -41,6 +41,11 @@ func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	return err
 }
 
+// NewSliceProcessor prepare a processor that backed by a slice.
+func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
+	return NewProcessor(InitSlice[T], addToSlice[T])
+}
+
 // InitSlice is [InitBatchFn] that allocate a slice.
 // It is recommended to use [NewSliceProcessor] instead if possible.
 func InitSlice[T any](i int64) []T {
@@ -53,22 +58,25 @@ func InitSlice[T any](i int64) []T {
 	return make([]T, 0, i)
 }
 
-// AddToSlice is [MergeToBatchFn] that add item to a slice.
-// It is recommended to use [NewSliceProcessor] instead if possible.
-func AddToSlice[T any](b []T, item T) []T {
+// addToSlice is [MergeToBatchFn] that add item to a slice.
+func addToSlice[T any](b []T, item T) []T {
 	return append(b, item)
 }
 
-// ToSlice create [InitBatchFn] and [MergeToBatchFn] that allocate a slice and add item to it.
-// A shortcut for [InitSlice] and [AddToSlice].
-func ToSlice[T any]() (InitBatchFn[[]T], MergeToBatchFn[[]T, T]) {
-	return InitSlice[T], AddToSlice[T]
+// NewMapProcessor prepare a processor that backed by a map.
+// If [CombineFn] is nil, duplicated key will be replaced.
+func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
+	return NewProcessor(InitMap[K, V], addToMapUsing(extractor, combiner))
+}
+
+// NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
+// If [CombineFn] is nil, duplicated key will be replaced.
+func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
+	return NewProcessor(InitMap[K, T], addSelfToMapUsing(keyExtractor, combiner))
 }
 
 // InitMap is [InitBatchFn] that allocate a map.
 // It uses the default size for map, as the size of item may be much larger than the size of map after merged.
-// However, if you properly configured [WithBatchCounter] to count the size of map and [WithMaxItem] to a reasonable value,
-// you may benefit from specifying the size of map using your own [InitBatchFn].
 // It is recommended to use [NewMapProcessor] instead if possible.
 func InitMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
@@ -83,12 +91,11 @@ type ExtractFn[T any, V any] func(T) V
 // CombineFn is a function to combine two values in to one.
 type CombineFn[T any] func(T, T) T
 
-// AddToMapUsing create [MergeToBatchFn]
+// addToMapUsing create [MergeToBatchFn]
 // that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, duplicated key will be replaced.
-// It is recommended to use [NewMapProcessor] instead if possible.
-func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
+func addToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
 	if combiner == nil {
 		return func(m map[K]V, t T) map[K]V {
 			kv := extractor(t)
@@ -108,12 +115,11 @@ func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, 
 	}
 }
 
-// AddSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
+// addSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
 // and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, duplicated key will be replaced.
-// It is recommended to use [NewSelfMapProcessor]  instead if possible.
-func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
+func addSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
 	if combiner == nil {
 		return func(m map[K]T, t T) map[K]T {
 			key := keyExtractor(t)
@@ -176,21 +182,4 @@ func CountMapKeys[V any, K comparable]() func(map[K]V, int64) int64 {
 	return func(m map[K]V, _ int64) int64 {
 		return int64(len(m))
 	}
-}
-
-// NewSliceProcessor prepare a processor that backed by a slice.
-func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
-	return NewProcessor(InitSlice[T], AddToSlice[T])
-}
-
-// NewMapProcessor prepare a processor that backed by a map.
-// If [CombineFn] is nil, duplicated key will be replaced.
-func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
-	return NewProcessor(InitMap[K, V], AddToMapUsing(extractor, combiner))
-}
-
-// NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
-// If [CombineFn] is nil, duplicated key will be replaced.
-func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
-	return NewProcessor(InitMap[K, T], AddSelfToMapUsing(keyExtractor, combiner))
 }
