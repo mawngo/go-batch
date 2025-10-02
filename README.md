@@ -10,7 +10,7 @@ bulk enqueue, precompute reports, ...
 Require go 1.24+
 
 ```shell
-go get -u github.com/mawngo/go-batch/v2
+go get -u github.com/mawngo/go-batch/v3
 ```
 
 ## Usage
@@ -21,28 +21,28 @@ go get -u github.com/mawngo/go-batch/v2
 package main
 
 import (
-	"github.com/mawngo/go-batch/v2"
+	"context"
+	"github.com/mawngo/go-batch/v3"
 	"sync/atomic"
 	"time"
 )
 
 func main() {
 	sum := int32(0)
-	// First create a batch.ProcessorSetup by specifying 
-	// the batch initializer and merger.
+	// First create a batch.ProcessorSetup by specifying the batch initializer and merger.
 	//
 	// Initializer will be called to create a new batch, 
 	// here the batch.InitSlice[int] will create a slice.
 	// Merger will be called to add item to a batch, 
-	// here the batch.AddToSlice[int] will add item to the slice.
+	// here the addToSlice[int] will add item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built-in 
-	// initializers and mergers for common data types,
+	// initializers and constructors functions for common data types,
 	// but you can always define your own initializer and merger.
 	//
 	// This equals to: batch.NewSliceProcessor().
-	setup := batch.NewProcessor(batch.InitSlice[int], batch.AddToSlice[int]).
+	setup := batch.NewProcessor(batch.InitSlice[int], addToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached 
 		// or the max wait is reached.
@@ -54,14 +54,15 @@ func main() {
 	// This will create a *batch.Processor that can accept item.
 	processor := setup.Run(summing(&sum))
 
+	ctx := context.Background()
 	for i := 0; i < 1_000_000; i++ {
 		// Add item to the processor.
-		processor.Put(1)
+		processor.Put(ctx, 1)
 	}
-	// Remember to close the processor before your application stopped.
-	// Closing will force the processor to process the left-over item, 
+	// Remember to close the running processor before your application stopped.
+	// Closing will force the processor to process the left-over item,
 	// any item added after closing is not guarantee to be processed.
-	if err := processor.Close(); err != nil {
+	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
 	if sum != 1_000_000 {
@@ -77,6 +78,13 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 		return nil
 	}
 }
+
+// addToSlice is [batch.MergeToBatchFn] that add item to a slice.
+// It is recommended to use [batch.NewSliceProcessor], this is just for example.
+func addToSlice[T any](b []T, item T) []T {
+	return append(b, item)
+}
+
 ```
 
 There are also built-in shortcuts for common processor `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
@@ -87,9 +95,6 @@ More usage can be found in [test](batch_test.go) and [examples](examples)
 
 ### Context and Cancellation
 
-This library provides both non-context `XXX` and context `XXXContext` variants.
-However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`)
-
 Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
 batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
 the batch.
@@ -97,8 +102,7 @@ the batch.
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
-We recommend using context variants, as non-context variants will likely be removed in the next major version of this
-library.
+If you do not want to use context, please use version 2 of this library.
 
 ### Waiting for an item to be processed
 
@@ -115,7 +119,8 @@ Provide batch loading like Facebook's DataLoader.
 package main
 
 import (
-	"github.com/mawngo/go-batch/v2"
+	"context"
+	"github.com/mawngo/go-batch/v3"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -135,6 +140,7 @@ func main() {
 		// This will create a *batch.Loader that can accept item.
 		Run(load(&loadedCount))
 
+	ctx := context.Background()
 	for i := 0; i < 100_000; i++ {
 		k := i % 10
 		go func() {
@@ -143,7 +149,7 @@ func main() {
 			// future := loader.Load(k)
 			// ...
 			// v, err := future.Get()
-			v, err := loader.Get(k)
+			v, err := loader.Get(ctx, k)
 
 			if err != nil {
 				panic(err)
@@ -157,7 +163,7 @@ func main() {
 	// Closing will force the loader to load the left-over request,
 	// any load request after the loader is closed is not guarantee 
 	// to be processed, and may block forever.
-	if err := loader.Close(); err != nil {
+	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
 	// If you do not want to load left over request, then use StopContext instead.
