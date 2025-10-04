@@ -9,7 +9,7 @@ func BenchmarkLoad(b *testing.B) {
 	b.Run("Load default", func(b *testing.B) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
-			Run(loadMapInt1(&touched), WithBatchLoaderCountInput[int]())
+			Run(loadMapInt1(&touched))
 		for b.Loop() {
 			b.StopTimer()
 			ctx := context.Background()

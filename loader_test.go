@@ -14,7 +14,7 @@ func TestBatchedLoad(t *testing.T) {
 	t.Run("Load", func(t *testing.T) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
-			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
+			Configure(WithMaxItem(55_000), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched))
 
 		ctx := context.Background()
@@ -50,7 +50,7 @@ func TestBatchedLoad(t *testing.T) {
 	t.Run("LoadAll", func(t *testing.T) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
-			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
+			Configure(WithMaxItem(55_000*3), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched))
 
 		ctx := context.Background()
@@ -127,7 +127,7 @@ func TestBatchedLoadCancel(t *testing.T) {
 func TestBatchedLoadReuse(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
-		Configure(WithMaxItem(100), WithMaxWait(Unset)).
+		Configure(WithMaxItem(100_000), WithMaxWait(Unset)).
 		Run(func(_ LoadKeys[int], _ int64) (map[int]int, error) {
 			atomic.AddInt32(&touched, 1)
 			return nil, nil
@@ -236,7 +236,7 @@ func TestBatchedLoadDisabled(t *testing.T) {
 func TestStopContext(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
-		Configure(WithMaxItem(10), WithMaxWait(Unset)).
+		Configure(WithMaxItem(10_001), WithMaxWait(Unset)).
 		Run(loadMapInt1(&touched))
 
 	ctx := context.Background()

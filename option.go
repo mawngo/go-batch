@@ -113,28 +113,10 @@ func WithMaxConcurrency[I size](concurrency I) Option {
 type runConfig[B any] struct {
 	errorHandlers []RecoverBatchFn[B]
 	split         SplitBatchFn[B]
-	count         func(B, int64) int64
 }
 
 // RunOption options for batch processing.
 type RunOption[B any] func(*runConfig[B])
-
-// WithBatchCounter provide alternate function to count the number of items in batch.
-// The function receives the current batch and the total input items count of the current batch.
-func WithBatchCounter[B any](count func(B, int64) int64) RunOption[B] {
-	return func(c *runConfig[B]) {
-		c.count = count
-	}
-}
-
-// WithBatchLoaderCountInput unset the current count function.
-// Typically used for [Loader] to specify that it should use the number of pending load requests for limit
-// instead of the number of pending keys.
-func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
-	return func(c *runConfig[LoadKeys[K]]) {
-		c.count = nil
-	}
-}
 
 // WithBatchSplitter split the batch into multiple smaller batch.
 // When concurrency > 0 and [SplitBatchFn] are set,

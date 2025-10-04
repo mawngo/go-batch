@@ -74,12 +74,8 @@ type Processor[T any, B any] struct {
 	// batch is the current batch of item.
 	batch B
 	// counter is the count of item in the batch.
-	// By default, it is the number of requests put into the processor that has not been processed.
-	// Can be customized using [WithBatchCounter].
+	// It is the number of requests put into the processor that has not been processed.
 	counter int64
-	// iCounter is the count of item put into the processor.
-	// This will be passed to [WithBatchCounter].
-	iCounter int64
 
 	// notEmpty notify when the processor is not empty.
 	// Used only for aggressive mode.
@@ -364,12 +360,7 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 	}()
 
 	p.batch = merge(p.batch, item)
-	p.iCounter++
-	if p.count != nil {
-		p.counter = p.count(p.batch, p.iCounter)
-	} else {
-		p.counter++
-	}
+	p.counter++
 	if p.notEmpty != nil && p.counter > 0 {
 		select {
 		case p.notEmpty <- struct{}{}:
@@ -415,7 +406,7 @@ func (p *Processor[T, B]) Peek(ctx context.Context, reader ProcessBatchFn[B]) er
 		}
 	}()
 
-	err := reader(p.batch, p.iCounter)
+	err := reader(p.batch, p.counter)
 	<-p.blocked
 	return err
 }
@@ -478,12 +469,7 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 			}
 
 			p.batch = merge(p.batch, items[ok])
-			p.iCounter++
-			if p.count != nil {
-				p.counter = p.count(p.batch, p.iCounter)
-			} else {
-				p.counter++
-			}
+			p.counter++
 			ok++
 		}
 
@@ -578,9 +564,8 @@ func (p *Processor[T, B]) Drain(ctx context.Context) error {
 			}
 			// Process the remaining items.
 			batch := p.batch
-			counter := p.iCounter
+			counter := p.counter
 			p.batch = p.init(p.maxItem)
-			p.iCounter = 0
 			p.counter = 0
 			<-p.blocked
 			p.doProcessConcurrency(batch, counter)
@@ -622,12 +607,11 @@ func (p *Processor[T, B]) Flush(ctx context.Context) error {
 // doProcessAndRelease process the batch and release the lock.
 func (p *Processor[T, B]) doProcessAndRelease(block bool) {
 	batch := p.batch
-	counter := p.iCounter
+	counter := p.counter
 	if block {
 		defer func() {
 			if r := recover(); r != nil {
 				p.batch = p.init(p.maxItem)
-				p.iCounter = 0
 				p.counter = 0
 				<-p.blocked
 				panic(r)
@@ -635,14 +619,12 @@ func (p *Processor[T, B]) doProcessAndRelease(block bool) {
 		}()
 		p.doProcessConcurrency(batch, counter)
 		p.batch = p.init(p.maxItem)
-		p.iCounter = 0
 		p.counter = 0
 		// Release after processing.
 		<-p.blocked
 		return
 	}
 	p.batch = p.init(p.maxItem)
-	p.iCounter = 0
 	p.counter = 0
 	// Release before processing.
 	<-p.blocked
