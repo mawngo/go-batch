@@ -88,7 +88,8 @@ More usage can be found in [test](batch_test.go) and [examples](examples)
 ### Context and Cancellation
 
 This library provides both non-context `XXX` and context `XXXContext` variants.
-However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`)
+However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`).
+Non-context variants will be removed in the next major version of this library.
 
 Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
 batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
@@ -96,9 +97,6 @@ the batch.
 
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
-
-We recommend using context variants, as non-context variants will likely be removed in the next major version of this
-library.
 
 ### Waiting for an item to be processed
 
@@ -195,7 +193,7 @@ However, the default configuration of the Loader is different:
 - Default concurrency is unlimited.
 
 Since version 2.5, the loader counts the number of pending load requests instead of pending keys for limit. To restore
-old behavior, pass `WithLoaderCountKeys()` to run config. 
+old behavior, pass `WithLoaderCountKeys()` to run config.
 
 ### Caching
 
@@ -207,6 +205,16 @@ All `Load` request before and during load of the same key will share the same `F
 Multiple `LoadBatchFn` can be run concurrently, but they will never share the same keys sets.
 
 See [loader cache example](examples/loadercache/main.go).
+
+### Cancellation
+
+This library provides both non-context `XXX` and context `XXXContext` variants.
+However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`).
+Non-context variants will be removed in the next major version of this library.
+
+Cancelling the context may* only affect the request that is waiting to be loaded.
+
+The last context provided to `Load` or `LoadAll` before the batch load is started will be used as the batch context.
 
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).

@@ -80,7 +80,7 @@ func ToSlice[T any]() (InitBatchFn[[]T], MergeToBatchFn[[]T, T]) {
 // It uses the default size for map, as the size of item may be much larger than the size of map after merged.
 // However, if you properly configured [WithBatchCounter] to count the size of map and [WithMaxItem] to a reasonable value,
 // you may benefit from specifying the size of map using your own [InitBatchFn].
-// Deprecated: use [NewMapProcessor] instead.
+// It is recommended to use [NewMapProcessor] instead if possible.
 func InitMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
 		return make(map[K]V, 1)
