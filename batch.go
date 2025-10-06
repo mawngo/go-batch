@@ -39,10 +39,6 @@ type IProcessor[T any, B any] interface {
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	MergeAll(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
-	// Peek access the current batch using provided function.
-	// This method does not count as processing the batch, the batch will still be processed.
-	Peek(ctx context.Context, reader ProcessBatchFn[B]) error
-
 	// ApproxItemCount return number of current item in processor, approximately.
 	ApproxItemCount() int64
 	// ItemCount return number of current item in processor.
@@ -385,39 +381,6 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 	}
 	<-p.blocked
 	return true
-}
-
-// Peek access the current batch using provided function.
-// This method does not count as processing the batch, the batch will still be processed.
-func (p *Processor[T, B]) Peek(ctx context.Context, reader ProcessBatchFn[B]) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	if p.IsDisabled() {
-		return reader(p.init(1), 0)
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case p.blocked <- struct{}{}:
-	}
-
-	// Always release in case of panic.
-	defer func() {
-		if r := recover(); r != nil {
-			select {
-			case <-p.blocked:
-			default:
-			}
-			panic(r)
-		}
-	}()
-
-	err := reader(p.batch, p.iCounter)
-	<-p.blocked
-	return err
 }
 
 // PutAll add all items to the processor.

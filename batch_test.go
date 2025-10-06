@@ -584,61 +584,6 @@ func TestCancelContext(t *testing.T) {
 			t.Fatalf("error closing processor: %v", err)
 		}
 	})
-
-	t.Run("Peek", func(t *testing.T) {
-		sum := int32(0)
-		processor := NewSliceProcessor[int]().
-			Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
-			Run(summing(&sum))
-
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		err := processor.Peek(ctx, func(ints []int, i int64) error {
-			panic("Should not be called")
-		})
-		if err == nil {
-			t.Fatalf("Cancelled peek should return error")
-		}
-		if err := processor.Close(context.Background()); err != nil {
-			t.Fatalf("error closing processor: %v", err)
-		}
-	})
-}
-
-func TestPeek(t *testing.T) {
-	sum := int32(0)
-	processor := NewSliceProcessor[int]().
-		Configure(WithMaxItem(10), WithMaxWait(Unset)).
-		Run(summing(&sum))
-
-	ctx := context.Background()
-	for i := 0; i < 9; i++ {
-		processor.Put(ctx, 1)
-	}
-
-	peeked := false
-	err := processor.Peek(ctx, func(ints []int, _ int64) error {
-		if len(ints) != 9 {
-			t.Fatal("Peek return inconsistent item count")
-		}
-		peeked = true
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	if cnt, ok := processor.ItemCount(ctx); ok && cnt != 9 {
-		t.Fatal("Peek trigger processing")
-	}
-	if !peeked {
-		t.Fatalf("Peek not called")
-	}
-	if err := processor.Close(ctx); err != nil {
-		t.Fatalf("error closing processor: %v", err)
-	}
-	if sum != 9 {
-		t.Fatalf("sum is %d != 9", sum)
-	}
 }
 
 func TestCustomCounter(t *testing.T) {
