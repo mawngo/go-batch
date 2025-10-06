@@ -38,7 +38,7 @@ type ProcessBatchFn[B any] func(B, int64) error
 // otherwise it will receive the same arguments of [ProcessBatchFn].
 type RecoverBatchFn[B any] func(B, int64, error) error
 
-// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disable.
+// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disabled.
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
 	return err
@@ -148,36 +148,4 @@ func addSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combin
 func InitType[T any](_ int64) T {
 	t := new(T)
 	return *t
-}
-
-// SplitSliceEqually create a [SplitBatchFn] that split a slice into multiple equal chuck.
-func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
-	return func(b []T, _ int64) [][]T {
-		batches := make([][]T, numberOfChunk)
-		for i := 0; i < len(b); i++ {
-			bucket := int64(i) % int64(numberOfChunk)
-			batches[bucket] = append(batches[bucket], b[i])
-		}
-		return batches
-	}
-}
-
-// SplitSliceSizeLimit create a [SplitBatchFn] that split a slice into multiple chuck of limited size.
-func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
-	return func(b []T, i int64) [][]T {
-		size := i / int64(maxSizeOfChunk)
-		if i%int64(maxSizeOfChunk) != 0 {
-			size++
-		}
-		batches := make([][]T, size)
-		index := 0
-		for batchI := 0; batchI < len(batches); batchI++ {
-			batch := batches[batchI]
-			for ; index < len(b); index++ {
-				batch = append(batch, b[index])
-			}
-			batches[batchI] = batch
-		}
-		return batches
-	}
 }

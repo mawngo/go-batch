@@ -11,12 +11,7 @@ import (
 )
 
 func TestBatchedLoad(t *testing.T) {
-	t.Run("Load", func(t *testing.T) {
-		touched := int32(0)
-		loader := NewLoader[int, int]().
-			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-			Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
-
+	testLoad := func(loader ILoader[int, int], touched *int32) {
 		ctx := context.Background()
 		loadings := make([]*Future[int], 0, 55_000)
 		sum := 0
@@ -42,17 +37,28 @@ func TestBatchedLoad(t *testing.T) {
 		if sum != 50_000 {
 			t.Fatalf("sum is %d != 50_000", touched)
 		}
-		if touched > 1 {
+		if *touched > 1 {
 			t.Fatalf("touched too many time %d > 1", touched)
 		}
+	}
+
+	t.Run("Load", func(t *testing.T) {
+		touched := int32(0)
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(50_000+1000+1), WithMaxWait(1*time.Second)).
+			Run(loadMapInt1(&touched))
+		testLoad(loader, &touched)
 	})
 
-	t.Run("LoadAll", func(t *testing.T) {
+	t.Run("Load (Keys)", func(t *testing.T) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-			Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
+			Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
+		testLoad(loader, &touched)
+	})
 
+	testLoadAll := func(loader ILoader[int, int], touched *int32) {
 		ctx := context.Background()
 		loadings := make([]map[int]*Future[int], 0, 55_000)
 		sum := 0
@@ -80,9 +86,24 @@ func TestBatchedLoad(t *testing.T) {
 		if sum != 150_000 {
 			t.Fatalf("sum is %d != 150_000", touched)
 		}
-		if touched > 1 {
+		if *touched > 1 {
 			t.Fatalf("touched too many time %d > 1", touched)
 		}
+	}
+	t.Run("LoadAll", func(t *testing.T) {
+		touched := int32(0)
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(50_000*3+1000*3+1), WithMaxWait(1*time.Second)).
+			Run(loadMapInt1(&touched))
+		testLoadAll(loader, &touched)
+	})
+
+	t.Run("LoadAll (Keys)", func(t *testing.T) {
+		touched := int32(0)
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
+			Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
+		testLoadAll(loader, &touched)
 	})
 }
 
@@ -92,7 +113,7 @@ func TestBatchedLoadCancel(t *testing.T) {
 		Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
 			<-batch.Ctx.Done()
 			return nil, batch.Ctx.Err()
-		}, WithBatchCounter(countLoadKeys))
+		}, WithLoaderCountKeys[int]())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	loadings := make([]*Future[int], 0, 15_000)
@@ -131,7 +152,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 		Run(func(_ LoadKeys[int], _ int64) (map[int]int, error) {
 			atomic.AddInt32(&touched, 1)
 			return nil, nil
-		}, WithBatchCounter(countLoadKeys))
+		}, WithLoaderCountKeys[int]())
 
 	ctx := context.Background()
 	loading1 := loader.Load(ctx, 1)
@@ -197,7 +218,7 @@ func TestBatchedLoadDisabled(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(0), WithMaxWait(Unset)).
-		Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
+		Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
 
 	ctx := context.Background()
 	sum := 0
@@ -237,7 +258,7 @@ func TestStopContext(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(10), WithMaxWait(Unset)).
-		Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
+		Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
 
 	ctx := context.Background()
 	loadings := make([]*Future[int], 0, 10_000)
@@ -273,8 +294,4 @@ func loadMapInt1(cnt *int32) LoadBatchFn[int, int] {
 		}
 		return res, nil
 	}
-}
-
-func countLoadKeys(k LoadKeys[int]) int64 {
-	return int64(len(k.Keys))
 }

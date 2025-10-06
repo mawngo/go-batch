@@ -174,7 +174,7 @@ func TestBatchedSplit(t *testing.T) {
 		sum := int32(0)
 		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(10)).
-			Run(summing(&sum), WithBatchSplitter(SplitSliceEqually[int](m)))
+			Run(summing(&sum), WithBatchSplitSliceEqually[int](m))
 
 		ctx := context.Background()
 		for i := 0; i < 50_000; i++ {
@@ -596,9 +596,7 @@ func TestCustomCounter(t *testing.T) {
 		Run(func(_ map[int]int, i int64) error {
 			atomic.AddInt32(&touched, 1)
 			return nil
-		}, WithBatchCounter(func(b map[int]int) int64 {
-			return int64(len(b))
-		}))
+		}, WithBatchCountMapKeys[int, int]())
 
 	ctx := context.Background()
 	for i := 0; i < 100; i++ {
