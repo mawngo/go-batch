@@ -64,13 +64,14 @@ func InitSlice[T any](i int64) []T {
 }
 
 // AddToSlice is [MergeToBatchFn] that add item to a slice.
-// It is recommended to use [NewSliceProcessor] instead if possible.
+// Deprecated: use [NewSliceProcessor] instead.
 func AddToSlice[T any](b []T, item T) []T {
 	return append(b, item)
 }
 
 // ToSlice create [InitBatchFn] and [MergeToBatchFn] that allocate a slice and add item to it.
 // A shortcut for [InitSlice] and [AddToSlice].
+// Deprecated: use [NewSliceProcessor] instead.
 func ToSlice[T any]() (InitBatchFn[[]T], MergeToBatchFn[[]T, T]) {
 	return InitSlice[T], AddToSlice[T]
 }
@@ -79,7 +80,7 @@ func ToSlice[T any]() (InitBatchFn[[]T], MergeToBatchFn[[]T, T]) {
 // It uses the default size for map, as the size of item may be much larger than the size of map after merged.
 // However, if you properly configured [WithBatchCounter] to count the size of map and [WithMaxItem] to a reasonable value,
 // you may benefit from specifying the size of map using your own [InitBatchFn].
-// It is recommended to use [NewMapProcessor] instead if possible.
+// Deprecated: use [NewMapProcessor] instead.
 func InitMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
 		return make(map[K]V, 1)
@@ -97,7 +98,7 @@ type CombineFn[T any] func(T, T) T
 // that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, duplicated key will be replaced.
-// It is recommended to use [NewMapProcessor] instead if possible.
+// Deprecated: use [NewMapProcessor] instead.
 func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
 	if combiner == nil {
 		return func(m map[K]V, t T) map[K]V {
@@ -122,7 +123,7 @@ func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, 
 // and apply [CombineFn] if key duplicated.
 // The original value will be passed as 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, duplicated key will be replaced.
-// It is recommended to use [NewSelfMapProcessor]  instead if possible.
+// Deprecated: use [NewSelfMapProcessor] instead.
 func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
 	if combiner == nil {
 		return func(m map[K]T, t T) map[K]T {
@@ -150,6 +151,7 @@ func InitType[T any](_ int64) T {
 }
 
 // SplitSliceEqually create a [SplitBatchFn] that split a slice into multiple equal chuck.
+// Deprecated: use [WithBatchSplitSliceEqually] instead.
 func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, _ int64) [][]T {
 		batches := make([][]T, numberOfChunk)
@@ -162,6 +164,7 @@ func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
 }
 
 // SplitSliceSizeLimit create a [SplitBatchFn] that split a slice into multiple chuck of limited size.
+// Deprecated: use [WithBatchSplitSliceSizeLimit] instead.
 func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, i int64) [][]T {
 		size := i / int64(maxSizeOfChunk)
@@ -182,6 +185,7 @@ func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 }
 
 // CountMapKeys create a counter that count keys in map.
+// Deprecated: use [WithBatchCountMapKeys] instead.
 func CountMapKeys[V any, K comparable]() func(map[K]V, int64) int64 {
 	return func(m map[K]V, _ int64) int64 {
 		return int64(len(m))

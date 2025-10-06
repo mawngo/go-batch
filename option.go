@@ -67,6 +67,7 @@ func WithAggressiveMode() Option {
 }
 
 // WithMaxCloseWait set the max waiting time when closing the processor.
+// Deprecated: use [Processor.CloseContext] for deadline control.
 func WithMaxCloseWait(wait time.Duration) Option {
 	return func(p *processorConfig) {
 		p.maxCloseWait = wait
@@ -138,13 +139,38 @@ func WithBatchCounter[B any](count func(B, int64) int64) RunOption[B] {
 // WithBatchLoaderCountInput unset the current count function.
 // Typically used for [Loader] to specify that it should use the number of pending load requests for limit
 // instead of the number of pending keys.
+//
+// This option should only be used for [Loader]
+// The batch must be LoadKeys[K].
+//
+// Deprecated: this is the default behavior since 2.5
 func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
 	return func(c *runConfig[LoadKeys[K]]) {
 		c.count = nil
 	}
 }
 
-// WithBatchSplitter split the batch into multiple smaller batch.
+// WithLoaderCountKeys provide [WithBatchCounter] with counter that count the number of keys of the [Loader].
+//
+// This option should only be used for [Loader]
+// The batch must be LoadKeys[K].
+func WithLoaderCountKeys[K any]() RunOption[LoadKeys[K]] {
+	return func(c *runConfig[LoadKeys[K]]) {
+		c.count = func(k LoadKeys[K], _ int64) int64 {
+			return int64(len(k.Keys))
+		}
+	}
+}
+
+// WithBatchCountMapKeys provide [WithBatchCounter] with counter that count the number of keys in the map.
+// The batch must be a map of type map[K]V.
+func WithBatchCountMapKeys[K comparable, V any]() RunOption[map[K]V] {
+	return func(c *runConfig[map[K]V]) {
+		c.count = CountMapKeys[V, K]()
+	}
+}
+
+// WithBatchSplitter provide [SplitBatchFn] to split the batch into multiple smaller batch.
 // When concurrency > 0 and [SplitBatchFn] are set,
 // the processor will split the batch and process across multiple threads,
 // otherwise the batch will be process on a single thread, and block when concurrency is reached.
@@ -152,6 +178,31 @@ func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
 func WithBatchSplitter[B any](split SplitBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
 		c.split = split
+	}
+}
+
+// WithBatchSplitSliceEqually provide [WithBatchSplitter] with a [SplitBatchFn] that
+// split the batch into multiple equal chunk.
+// The batch must be a slice of type T.
+func WithBatchSplitSliceEqually[T any, I size](numberOfChunk I) RunOption[[]T] {
+	return func(c *runConfig[[]T]) {
+		if numberOfChunk <= 0 {
+			return
+		}
+
+		c.split = SplitSliceEqually[T, I](numberOfChunk)
+	}
+}
+
+// WithBatchSplitSliceSizeLimit provide [WithBatchSplitter] with a [SplitBatchFn] that
+// split the batch into multiple chuck of limited size.
+// The batch must be a slice of type T.
+func WithBatchSplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) RunOption[[]T] {
+	return func(c *runConfig[[]T]) {
+		if maxSizeOfChunk <= 0 {
+			return
+		}
+		c.split = SplitSliceSizeLimit[T, I](maxSizeOfChunk)
 	}
 }
 

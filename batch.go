@@ -63,9 +63,11 @@ type IProcessor[T any, B any] interface {
 	// This method can block until the processor is available.
 	// It is recommended to use [IProcessor.PeekContext] instead.
 	// This method does not count as processing the batch, the batch will still be processed.
+	// Deprecated: Peek* methods will be removed in the future.
 	Peek(reader ProcessBatchFn[B]) error
 	// PeekContext access the current batch using provided function.
 	// This method does not count as processing the batch, the batch will still be processed.
+	// Deprecated: Peek* methods will be removed in the future.
 	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
 
 	// ApproxItemCount return number of current item in processor, approximately.
@@ -450,6 +452,7 @@ func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeT
 // This method can block until the processor is available.
 // It is recommended to use [Processor.PeekContext] instead.
 // This method does not count as processing the batch, the batch will still be processed.
+// Deprecated: Peek* methods will be removed in the future.
 func (p *Processor[T, B]) Peek(reader ProcessBatchFn[B]) error {
 	//nolint:staticcheck
 	return p.PeekContext(nil, reader)
@@ -457,6 +460,7 @@ func (p *Processor[T, B]) Peek(reader ProcessBatchFn[B]) error {
 
 // PeekContext access the current batch using provided function.
 // This method does not count as processing the batch, the batch will still be processed.
+// Deprecated: Peek* methods will be removed in the future.
 func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error {
 	if ctx != nil && ctx.Err() != nil {
 		return ctx.Err()
