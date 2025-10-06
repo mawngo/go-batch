@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -128,7 +127,6 @@ type Loader[K comparable, T any] struct {
 
 	lock    sync.RWMutex
 	loading map[K]*Future[T]
-	I       int32
 }
 
 // Configure apply [Option] to this loader setup.
@@ -229,7 +227,6 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		future := &Future[T]{
 			ch: make(chan struct{}, 1),
 		}
-		atomic.AddInt32(&l.I, 1)
 		batch.Keys = append(batch.Keys, key)
 		l.loading[key] = future
 		res = future
