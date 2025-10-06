@@ -289,6 +289,7 @@ func (l *Loader[K, T]) GetAll(keys []K) (map[K]T, error) {
 //
 // In the case of context timed out, keys that are loaded will be returned along with error.
 // Cancel the context may stop the loader from loading the key.
+// The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) GetAllContext(ctx context.Context, keys []K) (map[K]T, error) {
 	futures := l.LoadAllContext(ctx, keys)
 
@@ -318,6 +319,7 @@ func (l *Loader[K, T]) LoadAll(keys []K) map[K]*Future[T] {
 //
 // Context can be used to provide deadline for this method.
 // Cancel the context may stop the loader from loading the key.
+// The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Future[T] {
 	futures := make(map[K]*Future[T], len(keys))
 
@@ -325,10 +327,10 @@ func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Futu
 		if ctx != nil {
 			if ctx.Err() == nil {
 				batch.Ctx = ctx
+			} else {
 				futures[key] = &Future[T]{
 					err: ctx.Err(),
 				}
-			} else {
 				return batch
 			}
 		}
