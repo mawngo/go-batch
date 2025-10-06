@@ -93,16 +93,16 @@ changed in the future major version.
 
 More usage can be found in [test](batch_test.go) and [examples](examples)
 
-### Context and Cancellation
+### Cancellation
 
-Cancelling the context only affects the item that is waiting to be added to the processor (for example, when the waiting
-batch is full and all batch processing threads are busy).
+Cancelling the `context` only affects the item that is waiting to be added to the processor
+(for example, when the waiting batch is full and all batch processing threads are busy).
 Items that are already added to the processor will still be processed.
 
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
-If you do not want to use context, use [version 2 of this library](https://github.com/mawngo/go-batch/tree/v2).
+If you do not want to use `context`, use [version 2 of this library](https://github.com/mawngo/go-batch/tree/v2).
 
 ### Waiting for an item to be processed
 
@@ -210,6 +210,12 @@ All `Load` request before and during load of the same key will share the same `F
 Multiple `LoadBatchFn` can be run concurrently, but they will never share the same keys sets.
 
 See [loader cache example](examples/loadercache/main.go).
+
+### Cancellation
+
+Cancelling the context may* only affect the request that is waiting to be loaded.
+
+The last context provided to `Load` or `LoadAll` before the batch load is started will be used as the batch context.
 
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).

@@ -120,7 +120,6 @@ type runConfig[B any] struct {
 type RunOption[B any] func(*runConfig[B])
 
 // WithBatchCounter provide alternate function to count the number of items in batch.
-// The function receives the current batch and the total input items count of the current batch.
 func WithBatchCounter[B any](countFn CountBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
 		c.countFn = countFn

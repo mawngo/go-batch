@@ -12,9 +12,11 @@ type KeyVal[K any, V any] struct {
 
 // InitBatchFn function to create empty batch.
 // Accept max item limit, can be 1 (disabled), -1 (unlimited) or any positive number.
+// The InitBatchFn must never panic.
 type InitBatchFn[B any] func(int64) B
 
 // MergeToBatchFn function to add an item to batch.
+// The MergeToBatchFn must never panic.
 type MergeToBatchFn[B any, T any] func(B, T) B
 
 // SplitBatchFn function to split a batch into multiple smaller batches.
@@ -23,6 +25,7 @@ type MergeToBatchFn[B any, T any] func(B, T) B
 type SplitBatchFn[B any] func(B, int64) []B
 
 // CountBatchFn function to count the number of item in a batch.
+// The CountBatchFn must never panic.
 type CountBatchFn[B any] func(B) int64
 
 // ProcessBatchFn function to process a batch.
@@ -38,7 +41,10 @@ type ProcessBatchFn[B any] func(B, int64) error
 // otherwise it will receive the same arguments of [ProcessBatchFn].
 type RecoverBatchFn[B any] func(B, int64, error) error
 
-// LoggingErrorHandler default error handler, always included in [RecoverBatchFn] chain unless disabled.
+// LoggingErrorHandler default error handler,
+// it is included in [RecoverBatchFn] chain if there is no other error handler.
+//
+// Can be disabled by using [WithBatchErrorHandlers] with empty slice or [WithDisabledDefaultProcessErrorLog].
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
 	return err
@@ -83,6 +89,7 @@ func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], comb
 // However, if you properly configured [WithBatchCounter] to count the size of map
 // and [WithMaxItem] to a reasonable value,
 // you may benefit from specifying the size of map using your own [InitBatchFn].
+// It is recommended to use [NewMapProcessor] instead if possible.
 func InitMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
 		return make(map[K]V, 1)
