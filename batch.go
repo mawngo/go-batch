@@ -145,13 +145,13 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		closed:         make(chan struct{}),
 	}
 
-	for i := range options {
-		options[i](&processor.runConfig)
+	// if errorHandlers is empty, then add a default logging handler.
+	if !p.isDisableErrorLogging {
+		processor.errorHandlers = []RecoverBatchFn[B]{LoggingErrorHandler[B]}
 	}
 
-	// if errorHandlers is empty, then add a default logging handler.
-	if !p.isDisableErrorLogging && len(processor.errorHandlers) == 0 {
-		processor.errorHandlers = []RecoverBatchFn[B]{LoggingErrorHandler[B]}
+	for i := range options {
+		options[i](&processor.runConfig)
 	}
 
 	if p.isAggressiveMode() {

@@ -213,6 +213,6 @@ func WithBatchSplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) RunOption[[]T
 // The RecoverBatchFn must never panic.
 func WithBatchErrorHandlers[B any](handlers ...RecoverBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
-		c.errorHandlers = append(c.errorHandlers, handlers...)
+		c.errorHandlers = handlers
 	}
 }
