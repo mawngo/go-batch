@@ -15,8 +15,8 @@ var _ IProcessor[any, any] = (*Processor[any, any])(nil)
 // See [Option] for available options.
 type ProcessorSetup[T any, B any] struct {
 	processorConfig
-	merge MergeToBatchFn[B, T]
-	init  InitBatchFn[B]
+	mergeFn MergeToBatchFn[B, T]
+	initFn  InitBatchFn[B]
 }
 
 // IProcessor provides common methods of a [Processor].
@@ -91,7 +91,7 @@ type Processor[T any, B any] struct {
 // Call [ProcessorSetup.Run] with a handler to create a [Processor] that can accept item.
 // It is recommended to set at least maxWait by [WithMaxWait] or maxItem by [WithMaxItem].
 // By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
-func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
+func NewProcessor[T any, B any](initFn InitBatchFn[B], mergeFn MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
 	c := processorConfig{
 		maxWait: 0,
 		// Default unlimited for maxItem.
@@ -99,8 +99,8 @@ func NewProcessor[T any, B any](init InitBatchFn[B], merge MergeToBatchFn[B, T])
 	}
 	return ProcessorSetup[T, B]{
 		processorConfig: c,
-		init:            init,
-		merge:           merge,
+		initFn:          initFn,
+		mergeFn:         mergeFn,
 	}
 }
 
@@ -160,7 +160,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		processor.notEmpty = make(chan struct{}, 1)
 	}
 
-	processor.batch = p.init(p.maxItem)
+	processor.batch = p.initFn(p.maxItem)
 	if processor.IsDisabled() {
 		return processor
 	}
@@ -318,7 +318,7 @@ func (p *Processor[T, B]) IsDisabled() bool {
 
 // Put add item to the processor.
 func (p *Processor[T, B]) Put(ctx context.Context, item T) bool {
-	return p.Merge(ctx, item, p.merge)
+	return p.Merge(ctx, item, p.mergeFn)
 }
 
 // Merge add item to the processor using merge function.
@@ -328,7 +328,7 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 	}
 
 	if p.IsDisabled() {
-		batch := merge(p.init(1), item)
+		batch := merge(p.initFn(1), item)
 		p.doProcess(batch, 1)
 		return true
 	}
@@ -384,7 +384,7 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 // The processing order is the same as the input list,
 // so the output can also be used to determine the next item to process if you want to retry or continue processing.
 func (p *Processor[T, B]) PutAll(ctx context.Context, items []T) int {
-	return p.MergeAll(ctx, items, p.merge)
+	return p.MergeAll(ctx, items, p.mergeFn)
 }
 
 // MergeAll add all items to the processor using merge function.
@@ -396,7 +396,7 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 		return 0
 	}
 	if p.IsDisabled() {
-		batch := p.init(int64(len(items)))
+		batch := p.initFn(int64(len(items)))
 		for i := range items {
 			batch = merge(batch, items[i])
 		}
@@ -537,7 +537,7 @@ func (p *Processor[T, B]) Drain(ctx context.Context) error {
 			// Process the remaining items.
 			batch := p.batch
 			counter := p.counter
-			p.batch = p.init(p.maxItem)
+			p.batch = p.initFn(p.maxItem)
 			p.counter = 0
 			<-p.blocked
 			p.doProcessConcurrency(batch, counter)
@@ -583,20 +583,20 @@ func (p *Processor[T, B]) doProcessAndRelease(block bool) {
 	if block {
 		defer func() {
 			if r := recover(); r != nil {
-				p.batch = p.init(p.maxItem)
+				p.batch = p.initFn(p.maxItem)
 				p.counter = 0
 				<-p.blocked
 				panic(r)
 			}
 		}()
 		p.doProcessConcurrency(batch, counter)
-		p.batch = p.init(p.maxItem)
+		p.batch = p.initFn(p.maxItem)
 		p.counter = 0
 		// Release after processing.
 		<-p.blocked
 		return
 	}
-	p.batch = p.init(p.maxItem)
+	p.batch = p.initFn(p.maxItem)
 	p.counter = 0
 	// Release before processing.
 	<-p.blocked

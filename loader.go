@@ -123,7 +123,7 @@ type LoaderSetup[K comparable, T any] struct {
 type Loader[K comparable, T any] struct {
 	processor *Processor[K, LoadKeys[K]]
 
-	load               LoadBatchFn[K, T]
+	loadFn             LoadBatchFn[K, T]
 	missingResultError error
 
 	lock    sync.RWMutex
@@ -149,7 +149,7 @@ func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[Lo
 	loader := Loader[K, T]{
 		loading:            make(map[K]*Future[T]),
 		missingResultError: p.missingResultError,
-		load:               loadFn,
+		loadFn:             loadFn,
 	}
 	loader.processor = p.setup.Run(loader.processLoad, options...)
 	return &loader
@@ -161,7 +161,7 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 		batch.Ctx = context.Background()
 	}
 
-	results, err := l.load(batch, count)
+	results, err := l.loadFn(batch, count)
 	if err == nil {
 		err = l.missingResultError
 	}
