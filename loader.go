@@ -85,9 +85,9 @@ var ErrLoadMissingResult = errors.New("empty missing result for key")
 //
 // Call [LoaderSetup.Run] with a handler to create a [Loader] that can load item.
 // By default, the processor operates with the following configuration:
-// - WithMaxConcurrency: Unset (unlimited)
-// - WithMaxItem: 1000 (count keys)
-// - WithMaxWait: 16ms.
+//   - WithMaxConcurrency: Unset (unlimited)
+//   - WithMaxItem: 1000 (count keys)
+//   - WithMaxWait: 16ms.
 func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 	s := LoaderSetup[K, T]{
 		missingResultError: ErrLoadMissingResult,
@@ -206,15 +206,13 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
 
 	l.processor.Merge(ctx, key, func(batch LoadKeys[K], _ K) LoadKeys[K] {
-		if ctx != nil {
-			if ctx.Err() == nil {
-				batch.Ctx = ctx
-			} else {
-				res = &Future[T]{
-					err: ctx.Err(),
-				}
-				return batch
+		if ctx.Err() == nil {
+			batch.Ctx = ctx
+		} else {
+			res = &Future[T]{
+				err: ctx.Err(),
 			}
+			return batch
 		}
 
 		// Check if the key is already in the batch.
@@ -269,15 +267,13 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 	futures := make(map[K]*Future[T], len(keys))
 
 	l.processor.MergeAll(ctx, keys, func(batch LoadKeys[K], key K) LoadKeys[K] {
-		if ctx != nil {
-			if ctx.Err() == nil {
-				batch.Ctx = ctx
-				futures[key] = &Future[T]{
-					err: ctx.Err(),
-				}
-			} else {
-				return batch
+		if ctx.Err() == nil {
+			batch.Ctx = ctx
+			futures[key] = &Future[T]{
+				err: ctx.Err(),
 			}
+		} else {
+			return batch
 		}
 
 		// Check if the key is already in the batch.
@@ -351,16 +347,12 @@ func (r *Future[T]) Get(ctx context.Context) (T, error) {
 		return r.result, r.err
 	}
 
-	if ctx != nil {
-		select {
-		case <-r.ch:
-			// Don't care, the result is already set.
-		case <-ctx.Done():
-			// Return the context error.
-			return r.result, ctx.Err()
-		}
-	} else {
-		<-r.ch
+	select {
+	case <-r.ch:
+		// Don't care, the result is already set.
+	case <-ctx.Done():
+		// Return the context error.
+		return r.result, ctx.Err()
 	}
 
 	return r.result, r.err

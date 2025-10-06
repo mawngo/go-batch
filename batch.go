@@ -323,7 +323,7 @@ func (p *Processor[T, B]) Put(ctx context.Context, item T) bool {
 
 // Merge add item to the processor using merge function.
 func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool {
-	if ctx != nil && ctx.Err() != nil {
+	if ctx.Err() != nil {
 		return false
 	}
 
@@ -333,16 +333,10 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 		return true
 	}
 
-	// Select is slow, and most of the old codes are using Put without Context,
-	// so we allow nil context to preserve performance.
-	if ctx != nil {
-		select {
-		case <-ctx.Done():
-			return false
-		case p.blocked <- struct{}{}:
-		}
-	} else {
-		p.blocked <- struct{}{}
+	select {
+	case <-ctx.Done():
+		return false
+	case p.blocked <- struct{}{}:
 	}
 
 	// Always release in case of panic.
