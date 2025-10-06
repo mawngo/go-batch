@@ -15,7 +15,7 @@ func TestBatchedLoad(t *testing.T) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-			Run(loadMapInt1(&touched))
+			Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
 
 		ctx := context.Background()
 		loadings := make([]*Future[int], 0, 55_000)
@@ -51,7 +51,7 @@ func TestBatchedLoad(t *testing.T) {
 		touched := int32(0)
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
-			Run(loadMapInt1(&touched))
+			Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
 
 		ctx := context.Background()
 		loadings := make([]map[int]*Future[int], 0, 55_000)
@@ -92,7 +92,7 @@ func TestBatchedLoadCancel(t *testing.T) {
 		Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
 			<-batch.Ctx.Done()
 			return nil, batch.Ctx.Err()
-		})
+		}, WithBatchCounter(countLoadKeys))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	loadings := make([]*Future[int], 0, 15_000)
@@ -131,7 +131,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 		Run(func(_ LoadKeys[int], _ int64) (map[int]int, error) {
 			atomic.AddInt32(&touched, 1)
 			return nil, nil
-		})
+		}, WithBatchCounter(countLoadKeys))
 
 	ctx := context.Background()
 	loading1 := loader.Load(ctx, 1)
@@ -197,7 +197,7 @@ func TestBatchedLoadDisabled(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(0), WithMaxWait(Unset)).
-		Run(loadMapInt1(&touched))
+		Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
 
 	ctx := context.Background()
 	sum := 0
@@ -237,7 +237,7 @@ func TestStopContext(t *testing.T) {
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(10), WithMaxWait(Unset)).
-		Run(loadMapInt1(&touched))
+		Run(loadMapInt1(&touched), WithBatchCounter(countLoadKeys))
 
 	ctx := context.Background()
 	loadings := make([]*Future[int], 0, 10_000)
@@ -273,4 +273,8 @@ func loadMapInt1(cnt *int32) LoadBatchFn[int, int] {
 		}
 		return res, nil
 	}
+}
+
+func countLoadKeys(k LoadKeys[int]) int64 {
+	return int64(len(k.Keys))
 }

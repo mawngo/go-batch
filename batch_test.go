@@ -595,11 +595,10 @@ func TestCustomCounter(t *testing.T) {
 		Configure(WithMaxItem(11), WithMaxWait(Unset)).
 		Run(func(_ map[int]int, i int64) error {
 			atomic.AddInt32(&touched, 1)
-			if i != 110 {
-				t.Fatal("Input counter is not correct")
-			}
 			return nil
-		}, WithBatchCounter(CountMapKeys[int, int]()))
+		}, WithBatchCounter(func(b map[int]int) int64 {
+			return int64(len(b))
+		}))
 
 	ctx := context.Background()
 	for i := 0; i < 100; i++ {

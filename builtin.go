@@ -22,6 +22,9 @@ type MergeToBatchFn[B any, T any] func(B, T) B
 // The SplitBatchFn must never panic.
 type SplitBatchFn[B any] func(B, int64) []B
 
+// CountBatchFn function to count the number of item in a batch.
+type CountBatchFn[B any] func(B) int64
+
 // ProcessBatchFn function to process a batch.
 // Accept the current batch and the input count.
 type ProcessBatchFn[B any] func(B, int64) error
@@ -66,19 +69,21 @@ func addToSlice[T any](b []T, item T) []T {
 // NewMapProcessor prepare a processor that backed by a map.
 // If [CombineFn] is nil, duplicated key will be replaced.
 func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
-	return NewProcessor(InitMap[K, V], addToMapUsing(extractor, combiner))
+	return NewProcessor(initMap[K, V], addToMapUsing(extractor, combiner))
 }
 
 // NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
 // If [CombineFn] is nil, duplicated key will be replaced.
 func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
-	return NewProcessor(InitMap[K, T], addSelfToMapUsing(keyExtractor, combiner))
+	return NewProcessor(initMap[K, T], addSelfToMapUsing(keyExtractor, combiner))
 }
 
-// InitMap is [InitBatchFn] that allocate a map.
+// initMap is [InitBatchFn] that allocate a map.
 // It uses the default size for map, as the size of item may be much larger than the size of map after merged.
-// It is recommended to use [NewMapProcessor] instead if possible.
-func InitMap[K comparable, V any](i int64) map[K]V {
+// However, if you properly configured [WithBatchCounter] to count the size of map
+// and [WithMaxItem] to a reasonable value,
+// you may benefit from specifying the size of map using your own [InitBatchFn].
+func initMap[K comparable, V any](i int64) map[K]V {
 	if i == 0 {
 		return make(map[K]V, 1)
 	}
@@ -174,12 +179,5 @@ func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 			batches[batchI] = batch
 		}
 		return batches
-	}
-}
-
-// CountMapKeys create a counter that count keys in map.
-func CountMapKeys[V any, K comparable]() func(map[K]V, int64) int64 {
-	return func(m map[K]V, _ int64) int64 {
-		return int64(len(m))
 	}
 }

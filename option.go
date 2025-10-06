@@ -112,8 +112,8 @@ func WithMaxConcurrency[I size](concurrency I) Option {
 // This is a separate type as it contains generic types.
 type runConfig[B any] struct {
 	errorHandlers []RecoverBatchFn[B]
-	split         SplitBatchFn[B]
-	count         func(B, int64) int64
+	splitFn       SplitBatchFn[B]
+	countFn       CountBatchFn[B]
 }
 
 // RunOption options for batch processing.
@@ -121,18 +121,9 @@ type RunOption[B any] func(*runConfig[B])
 
 // WithBatchCounter provide alternate function to count the number of items in batch.
 // The function receives the current batch and the total input items count of the current batch.
-func WithBatchCounter[B any](count func(B, int64) int64) RunOption[B] {
+func WithBatchCounter[B any](countFn CountBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
-		c.count = count
-	}
-}
-
-// WithBatchLoaderCountInput unset the current count function.
-// Typically used for [Loader] to specify that it should use the number of pending load requests for limit
-// instead of the number of pending keys.
-func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
-	return func(c *runConfig[LoadKeys[K]]) {
-		c.count = nil
+		c.countFn = countFn
 	}
 }
 
@@ -143,7 +134,7 @@ func WithBatchLoaderCountInput[K comparable]() RunOption[LoadKeys[K]] {
 // This configuration may be beneficial if you have a very large batch that can be split into smaller batch and processed in parallel.
 func WithBatchSplitter[B any](split SplitBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
-		c.split = split
+		c.splitFn = split
 	}
 }
 

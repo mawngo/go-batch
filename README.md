@@ -196,8 +196,6 @@ The `batch.Loader` use `batch.Processor` for handling batching, so they share th
 
 However, the default configuration of the Loader is different:
 
-- It counts the number of pending keys instead of load request, which can be changed by `WithBatchLoaderCountInput`
-  option.
 - Default max item is `1000`
 - Default wait time is `16ms`
 - Default concurrency is unlimited.

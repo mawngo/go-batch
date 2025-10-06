@@ -151,9 +151,6 @@ func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[Lo
 		missingResultError: p.missingResultError,
 		load:               loadFn,
 	}
-	options = append([]RunOption[LoadKeys[K]]{WithBatchCounter(func(b LoadKeys[K], _ int64) int64 {
-		return int64(len(b.Keys))
-	})}, options...)
 	loader.processor = p.setup.Run(loader.processLoad, options...)
 	return &loader
 }
