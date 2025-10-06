@@ -7,7 +7,7 @@ bulk enqueue, precompute reports, ...
 
 ## Installation
 
-Require go 1.24+
+Require go 1.25+
 
 ```shell
 go get -u github.com/mawngo/go-batch/v3
@@ -95,14 +95,14 @@ More usage can be found in [test](batch_test.go) and [examples](examples)
 
 ### Context and Cancellation
 
-Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
-batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
-the batch.
+Cancelling the context only affects the item that is waiting to be added to the processor (for example, when the waiting
+batch is full and all batch processing threads are busy).
+Items that are already added to the processor will still be processed.
 
 You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
-If you do not want to use context, please use version 2 of this library.
+If you do not want to use context, use [version 2 of this library](https://github.com/mawngo/go-batch/tree/v2).
 
 ### Waiting for an item to be processed
 
