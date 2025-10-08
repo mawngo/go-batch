@@ -53,7 +53,7 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 	}
 }
 
-// addToSlice is [batch.MergeToBatchFn] that add item to a slice.
+// addToSlice is a [batch.MergeToBatchFn] that adds item to the slice.
 // It is recommended to use [batch.NewSliceProcessor], this is just for example.
 func addToSlice[T any](b []T, item T) []T {
 	return append(b, item)
