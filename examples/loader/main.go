@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/mawngo/go-batch/v3"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -22,9 +23,10 @@ func main() {
 		Run(load(&loadedCount))
 
 	ctx := context.Background()
+	wg := sync.WaitGroup{}
 	for i := 0; i < 100_000; i++ {
 		k := i % 10
-		go func() {
+		wg.Go(func() {
 			// Use the loader.
 			// Alternately, you can use the Load method
 			// future := loader.Load(k)
@@ -38,21 +40,22 @@ func main() {
 			if v != strconv.Itoa(k) {
 				panic("key mismatch")
 			}
-		}()
+		})
 	}
+	wg.Wait()
 	// Remember to close the running load before your application stopped.
 	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not guarantee to be processed,
+	// any load request after the loader is closed is not a guarantee to be processed
 	// and may block forever.
 	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
-	// If you do not want to load left over request, then use StopContext instead.
+	// If you do not want to load left over requests, then use StopContext instead.
 	// if err := loader.StopContext(context.Background()); err != nil {
 	//     panic(err)
 	// }
 	if loadedCount > 1 {
-		panic("loaded too many time")
+		panic("loaded too many time " + strconv.Itoa(int(loadedCount)))
 	}
 }
 
@@ -61,8 +64,10 @@ func load(p *int32) batch.LoadBatchFn[int, string] {
 		atomic.AddInt32(p, 1)
 		if len(batch.Keys) == 0 {
 			// This could happen if you provide an alternate counting method.
+			// For example, WithBatchCounter(nil).
 			return nil, nil
 		}
+		time.Sleep(1 * time.Second)
 
 		res := make(map[int]string, len(batch.Keys))
 		for _, k := range batch.Keys {

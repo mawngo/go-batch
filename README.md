@@ -88,26 +88,26 @@ func addToSlice[T any](b []T, item T) []T {
 ```
 
 There are also built-in shortcuts for common processor `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
-For simple use cases, you can use those shortcuts to avoid boilerplate code, also those functions are unlikely to be
+For simple use cases, you can use those shortcuts to avoid boilerplate code; also, those functions are unlikely to be
 changed in the future major version.
 
 More usage can be found in [test](batch_test.go) and [examples](examples)
 
 ### Cancellation
 
-Cancelling the `context` only affects the item that is waiting to be added to the processor
+Cancelling the `context` only affects the item waiting to be added to the processor
 (for example, when the waiting batch is full and all batch processing threads are busy).
 Items that are already added to the processor will still be processed.
 
-You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
+You can implement your own logic to cancel the batch using the item context by creating a custom batch and item struct 
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
 If you do not want to use `context`, use [version 2 of this library](https://github.com/mawngo/go-batch/tree/v2).
 
 ### Waiting for an item to be processed
 
-The processor does not provide a method to wait for or get the result of processing an item, however,
-you can use the `batch.IFuture[T]` with custom batch to implement your own waiting logic.
+The processor does not provide a method to wait for or get the result of processing an item; 
+however, you can use the `batch.IFuture[T]` with custom batch to implement your own waiting logic.
 
 See [future example](examples/future/main.go) or [loader implementation](loader.go).
 
@@ -131,8 +131,7 @@ func main() {
 	// First create a batch.LoaderSetup
 	loader := batch.NewLoader[int, string]().
 		// Configure the loader.
-		// All pending load requests will be processed when one of the 
-		// following limits is reached.
+		// All pending load requests will be processed when one of the following limits is reached.
 		Configure(batch.WithMaxItem(100), batch.WithMaxWait(1*time.Second)).
 		// Like when using the processor,
 		// start the loader by providing a LoadBatchFn,
@@ -161,12 +160,12 @@ func main() {
 	}
 	// Remember to close the running load before your application stopped.
 	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not guarantee 
-	// to be processed, and may block forever.
+	// any load request after the loader is closed is not a guarantee to be processed
+	// and may block forever.
 	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
-	// If you do not want to load left over request, then use StopContext instead.
+	// If you do not want to load left over requests, then use StopContext instead.
 	// if err := loader.StopContext(context.Background()); err != nil {
 	//     panic(err)
 	// }
@@ -176,12 +175,14 @@ func main() {
 }
 
 func load(p *int32) batch.LoadBatchFn[int, string] {
-	return func(batch batch.LoadKeys[int], count int64) (map[int]string, error) {
+	return func(batch batch.LoadKeys[int], _ int64) (map[int]string, error) {
 		atomic.AddInt32(p, 1)
 		if len(batch.Keys) == 0 {
 			// This could happen if you provide an alternate counting method.
+			// For example, WithBatchCounter(nil).
 			return nil, nil
 		}
+		time.Sleep(1 * time.Second)
 
 		res := make(map[int]string, len(batch.Keys))
 		for _, k := range batch.Keys {
@@ -198,7 +199,9 @@ However, the default configuration of the Loader is different:
 
 - Default max item is `1000`
 - Default wait time is `16ms`
-- Default concurrency is unlimited.
+- Default concurrency is unlimited `Unset`
+- It counts the number of pending load requests only in the current batch, so that requests are being loaded will not be
+  counted.
 
 ### Caching
 
@@ -206,14 +209,14 @@ This library does not provide caching.
 You can implement caching by simply checking the cache before `Load` and add item
 to the cache in the `LoadBatchFn`
 
-All `Load` request before and during load of the same key will share the same `Future`.
+All `Load` request before and during loading of the same key will share the same `Future`.
 Multiple `LoadBatchFn` can be run concurrently, but they will never share the same keys sets.
 
 See [loader cache example](examples/loadercache/main.go).
 
 ### Cancellation
 
-Cancelling the context may* only affect the request that is waiting to be loaded.
+Cancelling the context may* only affect requests waiting to be loaded.
 
 The last context provided to `Load` or `LoadAll` before the batch load is started will be used as the batch context.
 

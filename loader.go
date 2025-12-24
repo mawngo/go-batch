@@ -64,6 +64,11 @@ type ILoader[K comparable, T any] interface {
 type LoadKeys[K any] struct {
 	Ctx  context.Context
 	Keys []K
+
+	// counter is the number of pending load request of this batch before processing.
+	counter int64
+	// id is the unique id of this batch.
+	id *byte
 }
 
 // LoadBatchFn function to load a batch of keys.
@@ -93,10 +98,13 @@ func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 	}
 	s.setup = NewProcessor[K, LoadKeys[K]](
 		func(i int64) LoadKeys[K] {
-			return LoadKeys[K]{
+			var id byte
+			b := LoadKeys[K]{
 				Keys: InitSlice[K](i),
 				Ctx:  nil,
+				id:   &id,
 			}
+			return b
 		},
 		func(_ LoadKeys[K], _ K) LoadKeys[K] {
 			// Disable Put* usage.
@@ -149,6 +157,9 @@ func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[Lo
 		missingResultError: p.missingResultError,
 		loadFn:             loadFn,
 	}
+	// By default, using the batch counter which count total pending request of that batch.
+	countFn := func(batch LoadKeys[K]) int64 { return batch.counter }
+	options = append([]RunOption[LoadKeys[K]]{WithBatchCounter(countFn)}, options...)
 	loader.processor = p.setup.Run(loader.processLoad, options...)
 	return &loader
 }
@@ -218,6 +229,9 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		if future, ok := l.loading[key]; ok {
 			l.lock.RUnlock()
 			res = future
+			if future.batchID == batch.id {
+				batch.counter++
+			}
 			return batch
 		}
 		l.lock.RUnlock()
@@ -225,9 +239,11 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
 		// is already locked, so no thread will touch the new key.
 		future := &Future[T]{
-			ch: make(chan struct{}, 1),
+			ch:      make(chan struct{}, 1),
+			batchID: batch.id,
 		}
 		batch.Keys = append(batch.Keys, key)
+		batch.counter++
 		l.loading[key] = future
 		res = future
 		return batch
@@ -280,6 +296,9 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 		if future, ok := l.loading[key]; ok {
 			l.lock.RUnlock()
 			futures[key] = future
+			if future.batchID == batch.id {
+				batch.counter++
+			}
 			return batch
 		}
 		l.lock.RUnlock()
@@ -287,9 +306,11 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
 		// is already locked, so no thread will touch the new key.
 		future := &Future[T]{
-			ch: make(chan struct{}, 1),
+			ch:      make(chan struct{}, 1),
+			batchID: batch.id,
 		}
 		batch.Keys = append(batch.Keys, key)
+		batch.counter++
 		l.loading[key] = future
 		futures[key] = future
 		return batch
@@ -334,6 +355,8 @@ func (l *Loader[K, T]) Flush(ctx context.Context) error {
 type Future[T any] struct {
 	// ch is used to notify that the future is completed.
 	ch chan struct{}
+	// batch id is used to identify the id of the batch that loading this future.
+	batchID *byte
 
 	result T
 	err    error
