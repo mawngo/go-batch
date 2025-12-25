@@ -80,7 +80,7 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 ```
 
 There are also built-in shortcuts for common processor `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
-For simple use cases, you can use those shortcuts to avoid boilerplate code, also those functions are unlikely to be
+For simple use cases, you can use those shortcuts to avoid boilerplate code; also those functions are unlikely to be
 changed in the future major version.
 
 More usage can be found in [test](batch_test.go) and [examples](examples)
@@ -91,17 +91,17 @@ This library provides both non-context `XXX` and context `XXXContext` variants.
 However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`).
 Non-context variants will be removed in the next major version of this library.
 
-Cancelling the context only affects the item that is waiting to be added to the batch (for example, when the waiting
+Cancelling the context only affects the item waiting to be added to the batch (for example, when the waiting
 batch is full and all batch processing threads are busy), there is no way to cancel the item that is already added to
 the batch.
 
-You can implement your own logic to cancel the batch using the item context by creating custom batch and item struct
+You can implement your own logic to cancel the batch using the item context by creating a custom batch and item struct 
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
 ### Waiting for an item to be processed
 
-The processor does not provide a method to wait for or get the result of processing an item, however,
-you can use the `batch.IFuture[T]` with custom batch to implement your own waiting logic.
+The processor does not provide a method to wait for or get the result of processing an item; 
+however, you can use the `batch.IFuture[T]` with custom batch to implement your own waiting logic.
 
 See [future example](examples/future/main.go) or [loader implementation](loader.go).
 
@@ -174,6 +174,7 @@ func load(p *int32) batch.LoadBatchFn[int, string] {
 			// This could happen if you provide an alternate counting method.
 			return nil, nil
 		}
+		time.Sleep(2 * time.Second)
 
 		res := make(map[int]string, len(batch.Keys))
 		for _, k := range batch.Keys {
@@ -190,10 +191,9 @@ However, the default configuration of the Loader is different:
 
 - Default max item is `1000`
 - Default wait time is `16ms`
-- Default concurrency is unlimited.
-
-Since version 2.5, the loader counts the number of pending load requests instead of pending keys for limit. To restore
-old behavior, pass `WithLoaderCountKeys()` to run config.
+- Default concurrency is unlimited `Unset`
+- It counts the number of pending load requests only in the current batch, so that requests are being loaded will not be
+  counted (since v2.5, pass `WithLoaderCountKeys()` to run config)
 
 ### Caching
 
@@ -201,7 +201,7 @@ This library does not provide caching.
 You can implement caching by simply checking the cache before `Load` and add item
 to the cache in the `LoadBatchFn`
 
-All `Load` request before and during load of the same key will share the same `Future`.
+All `Load` request before and during loading of the same key will share the same `Future`.
 Multiple `LoadBatchFn` can be run concurrently, but they will never share the same keys sets.
 
 See [loader cache example](examples/loadercache/main.go).
@@ -212,7 +212,7 @@ This library provides both non-context `XXX` and context `XXXContext` variants.
 However, it is recommended to use context variants, as non-context variants can block indefinitely (except for `Close`).
 Non-context variants will be removed in the next major version of this library.
 
-Cancelling the context may* only affect the request that is waiting to be loaded.
+Cancelling the context may* only affect the request waiting to be loaded.
 
 The last context provided to `Load` or `LoadAll` before the batch load is started will be used as the batch context.
 

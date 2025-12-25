@@ -61,6 +61,7 @@ func load(p *int32) batch.LoadBatchFn[int, string] {
 			// This could happen if you provide an alternate counting method.
 			return nil, nil
 		}
+		time.Sleep(2 * time.Second)
 
 		res := make(map[int]string, len(batch.Keys))
 		for _, k := range batch.Keys {
