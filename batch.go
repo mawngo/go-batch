@@ -21,47 +21,47 @@ type ProcessorSetup[T any, B any] struct {
 
 // IProcessor provides common methods of a [Processor].
 type IProcessor[T any, B any] interface {
-	// Put add item to the processor.
+	// Put adds item to the processor.
 	// If the context is canceled and the item is not added, then this method will return false.
-	// The context passed in only control the put step, after item added to the processor,
+	// The context passed in only controls the put step. After the item was added to the processor,
 	// the processing will not be canceled by this context.
 	Put(ctx context.Context, item T) bool
 	// PutAll add all items to the processor.
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	PutAll(ctx context.Context, items []T) int
 
-	// Merge add item to the processor using merge function.
+	// Merge add item to the processor using the merge function.
 	// If the context is canceled and the item is not added, then this method will return false.
-	// The context passed in only control the put step, after item added to the processor,
+	// The context passed in only controls the put step. After the item was added to the processor,
 	// the processing will not be canceled by this context.
 	Merge(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool
-	// MergeAll add all items to the processor using merge function.
+	// MergeAll add all items to the processor using a merge function.
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	MergeAll(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
-	// ApproxItemCount return number of current item in processor, approximately.
+	// ApproxItemCount return number of current items in the processor, approximately.
 	ApproxItemCount() int64
-	// ItemCount return number of current item in processor.
-	// If the context is canceled, then this method will return approximate item count and false.
+	// ItemCount return number of current items in the processor.
+	// If the context is canceled, then this method will return an approximate item count and false.
 	ItemCount(ctx context.Context) (int64, bool)
 	// Close stop the processor.
-	// This method may process the left-over batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may process the left-over batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	Close(ctx context.Context) error
 	// Stop the processor.
 	// This method does not process leftover batch.
 	Stop(ctx context.Context) error
-	// Drain force process batch util the batch is empty.
-	// This method may process the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// Drain force processing the batch until the batch is empty.
+	// This method may process the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	Drain(ctx context.Context) error
 	// Flush force process the current batch.
-	// This method may process the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may process the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	Flush(ctx context.Context) error
 }
 
-// Processor a processor that is running and can process item.
+// Processor is a processor that is running and can process item.
 type Processor[T any, B any] struct {
 	ProcessorSetup[T, B]
 	runConfig[B]
@@ -87,7 +87,7 @@ type Processor[T any, B any] struct {
 
 // NewProcessor create a ProcessorSetup using specified functions.
 // See [ProcessorSetup.Configure] and [Option] for available configuration.
-// The result [ProcessorSetup] is in setup state.
+// The result [ProcessorSetup] is in the setup state.
 // Call [ProcessorSetup.Run] with a handler to create a [Processor] that can accept item.
 // It is recommended to set at least maxWait by [WithMaxWait] or maxItem by [WithMaxItem].
 // By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
@@ -104,7 +104,7 @@ func NewProcessor[T any, B any](initFn InitBatchFn[B], mergeFn MergeToBatchFn[B,
 	}
 }
 
-// Configure apply [Option] to this processor setup.
+// Configure applies [Option] to this processor setup.
 func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] {
 	for i := range options {
 		options[i](&p.processorConfig)
@@ -112,8 +112,8 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 	return p
 }
 
-// ItemCount return number of current item in processor.
-// If the context is canceled, then this method will return approximate item count and false.
+// ItemCount return number of current items in the processor.
+// If the context is canceled, then this method will return an approximate item count and false.
 func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 	select {
 	case p.blocked <- struct{}{}:
@@ -124,7 +124,7 @@ func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 	return p.counter, true
 }
 
-// ApproxItemCount return number of current item in processor.
+// ApproxItemCount return number of current items in processor.
 // This method does not block, so the counter may not be accurate.
 func (p *Processor[T, B]) ApproxItemCount() int64 {
 	return p.counter
@@ -166,7 +166,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 	}
 
 	if p.maxWait < 0 && p.maxItem >= 0 {
-		processor.waitUtilFullDispatch()
+		processor.waitUntilFullDispatch()
 		return processor
 	}
 
@@ -174,7 +174,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		if processor.notEmpty != nil {
 			processor.continuousDispatch()
 		} else {
-			processor.waitUtilFullContinuousDispatch()
+			processor.waitUntilFullContinuousDispatch()
 		}
 		return processor
 	}
@@ -184,8 +184,8 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 }
 
 // continuousDispatch create a dispatcher routine that,
-// when batch is empty, wait util it not empty,
-// else process the remaining batch util it became empty.
+// when the batch is empty, wait until it is not empty,
+// else process the remaining batch until it became empty.
 func (p *Processor[T, B]) continuousDispatch() {
 	if p.notEmpty == nil {
 		// Should never happen.
@@ -226,11 +226,11 @@ func (p *Processor[T, B]) continuousDispatch() {
 	}()
 }
 
-// waitUtilFullContinuousDispatch create a dispatcher routine that,
-// when batch is empty, wait util it full,
-// else process the remaining batch util it became empty.
+// waitUntilFullContinuousDispatch create a dispatcher routine that,
+// when the batch is empty, wait until it is full,
+// else process the remaining batch until it became empty.
 // maxItem must be specified by [WithMaxItem].
-func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
+func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 	go func() {
 		for {
 			select {
@@ -241,7 +241,7 @@ func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
 					break
 				}
 				<-p.blocked
-				// if the batch is empty then wait util full to process.
+				// if the batch is empty then wait until full to process.
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
@@ -257,7 +257,7 @@ func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
 	}()
 }
 
-// timedDispatch create a dispatcher routine that wait util the batch is full or AT LEAST maxWait elapsed.
+// timedDispatch create a dispatcher routine that waits until the batch is full or AT LEAST maxWait elapsed.
 // when maxWait is passed and the batch is empty, it will reset the timer to avoid processing only one item.
 func (p *Processor[T, B]) timedDispatch() {
 	go func() {
@@ -268,7 +268,7 @@ func (p *Processor[T, B]) timedDispatch() {
 				select {
 				case p.blocked <- struct{}{}:
 					// if empty, then reset the timer.
-					// this avoids the first item getting processed immediately after a long wait.
+					// this avoids the first item to be processed immediately after a long wait.
 					if p.counter == 0 && !p.isHardMaxWait {
 						<-p.blocked
 						break
@@ -294,9 +294,9 @@ func (p *Processor[T, B]) timedDispatch() {
 	}()
 }
 
-// waitUtilFullDispatch create a dispatcher routine that wait util the batch is full.
+// waitUntilFullDispatch create a dispatcher routine that waits until the batch is full.
 // maxItem must be specified using [WithMaxItem].
-func (p *Processor[T, B]) waitUtilFullDispatch() {
+func (p *Processor[T, B]) waitUntilFullDispatch() {
 	go func() {
 		for {
 			select {
@@ -321,7 +321,7 @@ func (p *Processor[T, B]) Put(ctx context.Context, item T) bool {
 	return p.Merge(ctx, item, p.mergeFn)
 }
 
-// Merge add item to the processor using merge function.
+// Merge add item to the processor using a merge function.
 func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool {
 	if ctx.Err() != nil {
 		return false
@@ -365,7 +365,7 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 		}
 	}
 	if p.maxItem > -1 && p.counter >= p.maxItem {
-		// Block util processed.
+		// Block until processed.
 		p.full <- struct{}{}
 		return true
 	}
@@ -381,7 +381,7 @@ func (p *Processor[T, B]) PutAll(ctx context.Context, items []T) int {
 	return p.MergeAll(ctx, items, p.mergeFn)
 }
 
-// MergeAll add all items to the processor using merge function.
+// MergeAll add all items to the processor using a merge function.
 // If the context is canceled, then this method will return the number of items added to the processor.
 // The processing order is the same as the input list,
 // so the output can also be used to determine the next item to process if you want to retry or continue processing.
@@ -448,7 +448,7 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 			}
 		}
 		if p.maxItem > -1 && p.counter >= p.maxItem {
-			// Block util processed.
+			// Block until processed.
 			p.full <- struct{}{}
 			continue
 		}
@@ -458,9 +458,9 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 }
 
 // Close stop the processor.
-// This method will process the leftover branch on caller thread.
+// This method will process the leftover branch on the caller thread.
 //
-// Context can be used to provide deadline for this method,
+// Context can be used to provide a deadline for this method,
 // Context does not affect already in processing batch.
 func (p *Processor[T, B]) Close(ctx context.Context) error {
 	if p.IsDisabled() {
@@ -510,9 +510,9 @@ func (p *Processor[T, B]) Stop(ctx context.Context) error {
 	return nil
 }
 
-// Drain force process batch util the batch is empty.
-// This method always processes the batch on caller thread.
-// ctx can be used to provide deadline for this method.
+// Drain force processing batch until the batch is empty.
+// This method always processes the batch on the caller thread.
+// ctx can be used to provide a deadline for this method.
 func (p *Processor[T, B]) Drain(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil

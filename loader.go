@@ -24,39 +24,39 @@ type IFuture[T any] interface {
 type ILoader[K comparable, T any] interface {
 	// Get registers a key to be loaded and wait for it to be loaded.
 	//
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
 	Get(ctx context.Context, key K) (T, error)
 
 	// GetAll registers keys to be loaded and wait for all of them to be loaded.
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	//
-	// In the case of context timed out, keys that are loaded will be returned along with error.
+	// In the case of context timed out, keys that are loaded will be returned along with an error.
 	// Cancel the context may stop the loader from loading the key.
 	GetAll(ctx context.Context, keys []K) (map[K]T, error)
 
 	// Load registers a key to be loaded and return a [Future] for waiting for the result.
 	//
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
 	Load(ctx context.Context, key K) *Future[T]
 
 	// LoadAll registers keys to be loaded and return a [Future] for waiting for the combined result.
 	//
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
 	LoadAll(ctx context.Context, keys []K) map[K]*Future[T]
 
 	// Close stop the loader.
-	// This method may load the left-over batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may load the left-over batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	Close(ctx context.Context) error
 	// Stop the loader.
-	// This method does not load leftover batch.
+	// This method does not load the leftover batch.
 	Stop(ctx context.Context) error
 	// Flush force load the current batch.
-	// This method may load the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may load the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	Flush(ctx context.Context) error
 }
 
@@ -85,7 +85,7 @@ var ErrLoadMissingResult = errors.New("empty missing result for key")
 
 // NewLoader create a LoaderSetup using specified functions.
 // See [LoaderSetup.Configure] and [Option] for available configuration.
-// The result [LoaderSetup] is in setup state.
+// The result [LoaderSetup] is in the setup state.
 //
 // Call [LoaderSetup.Run] with a handler to create a [Loader] that can load item.
 // By default, the processor operates with the following configuration:
@@ -119,7 +119,7 @@ func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 }
 
 // LoaderSetup batch loader that is in setup phase (not running)
-// You cannot load item using this loader yet, use [LoaderSetup.Run] to create a [Loader] that can load item.
+// You cannot load any item using this loader yet, use [LoaderSetup.Run] to create a [Loader] that can load item.
 // See [Option] for available options.
 type LoaderSetup[K comparable, T any] struct {
 	setup              ProcessorSetup[K, LoadKeys[K]]
@@ -137,7 +137,7 @@ type Loader[K comparable, T any] struct {
 	loading map[K]*Future[T]
 }
 
-// Configure apply [Option] to this loader setup.
+// Configure applies [Option] to this loader setup.
 func (p LoaderSetup[K, T]) Configure(options ...Option) LoaderSetup[K, T] {
 	p.setup = p.setup.Configure(options...)
 	return p
@@ -150,14 +150,14 @@ func (p LoaderSetup[K, T]) WithMissingResultError(err error) LoaderSetup[K, T] {
 }
 
 // Run create a [Loader] that can accept item.
-// Accept a [LoadBatchFn]  and a list of [RunOption] of type [LoadKeys].
+// Accept a [LoadBatchFn] and a list of [RunOption] of type [LoadKeys].
 func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[LoadKeys[K]]) *Loader[K, T] {
 	loader := Loader[K, T]{
 		loading:            make(map[K]*Future[T]),
 		missingResultError: p.missingResultError,
 		loadFn:             loadFn,
 	}
-	// By default, using the batch counter which count total pending request of that batch.
+	// By default, using the batch counter that counts the total pending request of that batch.
 	countFn := func(batch LoadKeys[K]) int64 { return batch.counter }
 	options = append([]RunOption[LoadKeys[K]]{WithBatchCounter(countFn)}, options...)
 	loader.processor = p.setup.Run(loader.processLoad, options...)
@@ -201,7 +201,7 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 
 // Get registers a key to be loaded and wait for it to be loaded.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 func (l *Loader[K, T]) Get(ctx context.Context, key K) (T, error) {
 	return l.Load(ctx, key).Get(ctx)
@@ -209,7 +209,7 @@ func (l *Loader[K, T]) Get(ctx context.Context, key K) (T, error) {
 
 // Load registers a key to be loaded and return a [Future] for waiting for the result.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
@@ -252,7 +252,7 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 }
 
 // GetAll registers keys to be loaded and wait for all of them to be loaded.
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 //
 // In the case of context timed out, keys that are loaded will be returned along with error.
 // Cancel the context may stop the loader from loading the key.
@@ -275,7 +275,7 @@ func (l *Loader[K, T]) GetAll(ctx context.Context, keys []K) (map[K]T, error) {
 
 // LoadAll registers keys to be loaded and return a [IFuture] for waiting for the combined result.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
@@ -320,16 +320,16 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 }
 
 // Close stop the loader.
-// This method will load the left-over batch on caller thread.
+// This method will load the left-over batch on the caller thread.
 //
-// Context can be used to provide deadline for this method,
+// Context can be used to provide a deadline for this method,
 // Context does not affect already in processing batch.
 func (l *Loader[K, T]) Close(ctx context.Context) error {
 	return l.processor.Close(ctx)
 }
 
 // Stop the loader.
-// This method does not load leftover batch.
+// This method does not load the leftover batch.
 func (l *Loader[K, T]) Stop(ctx context.Context) error {
 	err := l.processor.Stop(ctx)
 	l.lock.Lock()
@@ -344,8 +344,8 @@ func (l *Loader[K, T]) Stop(ctx context.Context) error {
 }
 
 // Flush force load the current batch.
-// This method may load the pending batch on caller thread, depend on concurrent and block settings.
-// Context can be used to provide deadline for this method.
+// This method may load the pending batch on the caller thread, depending on concurrent and block settings.
+// Context can be used to provide a deadline for this method.
 func (l *Loader[K, T]) Flush(ctx context.Context) error {
 	return l.processor.Flush(ctx)
 }
