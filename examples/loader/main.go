@@ -40,7 +40,7 @@ func main() {
 	}
 	// Remember to close the running load before your application stopped.
 	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not guarantee to be processed,
+	// any load request after the loader is closed is not guaranteed to be processed
 	// and may block forever.
 	if err := loader.Close(); err != nil {
 		panic(err)

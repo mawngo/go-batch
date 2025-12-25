@@ -28,13 +28,13 @@ import (
 
 func main() {
 	sum := int32(0)
-	// First create a batch.ProcessorSetup by specifying 
+	// First, create a batch.ProcessorSetup by specifying 
 	// the batch initializer and merger.
 	//
 	// Initializer will be called to create a new batch, 
 	// here the batch.InitSlice[int] will create a slice.
-	// Merger will be called to add item to a batch, 
-	// here the batch.AddToSlice[int] will add item to the slice.
+	// Merger will be called to add the item to a batch, 
+	// here the batch.AddToSlice[int] will add the item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built-in 
@@ -59,8 +59,8 @@ func main() {
 		processor.Put(1)
 	}
 	// Remember to close the processor before your application stopped.
-	// Closing will force the processor to process the left-over item, 
-	// any item added after closing is not guarantee to be processed.
+	// Closing will force the processor to process the left-over item. 
+	// Any item added after closing is not guaranteed to be processed.
 	if err := processor.Close(); err != nil {
 		panic(err)
 	}
@@ -153,12 +153,12 @@ func main() {
 	}
 	// Remember to close the running load before your application stopped.
 	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not guarantee 
-	// to be processed, and may block forever.
+	// any load request after the loader is closed is not guaranteed
+	// to be processed and may block forever.
 	if err := loader.Close(); err != nil {
 		panic(err)
 	}
-	// If you do not want to load left over request, then use StopContext instead.
+	// If you do not want to load the left over request, then use StopContext instead.
 	// if err := loader.StopContext(context.Background()); err != nil {
 	//     panic(err)
 	// }
@@ -193,7 +193,7 @@ However, the default configuration of the Loader is different:
 - Default wait time is `16ms`
 - Default concurrency is unlimited `Unset`
 - It counts the number of pending load requests only in the current batch, so that requests are being loaded will not be
-  counted (since v2.5, pass `WithLoaderCountKeys()` to run config)
+  counted (new behavior since v2.5, pass `WithLoaderCountKeys()` to run config to restore the old behavior)
 
 ### Caching
 

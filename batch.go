@@ -10,7 +10,7 @@ import (
 
 var _ IProcessor[any, any] = (*Processor[any, any])(nil)
 
-// ProcessorSetup batch processor that is in setup phase (not running).
+// ProcessorSetup batch processor that is in the setup phase (not running).
 // You cannot put item into this processor, use [ProcessorSetup.Run] to create a [Processor] that can accept item.
 // See [Option] for available options.
 type ProcessorSetup[T any, B any] struct {
@@ -21,88 +21,88 @@ type ProcessorSetup[T any, B any] struct {
 
 // IProcessor provides common methods of a [Processor].
 type IProcessor[T any, B any] interface {
-	// Put add item to the processor.
-	// This method can block until the processor is available for processing new batch,
+	// Put adds item to the processor.
+	// This method can block until the processor is available for processing a new batch
 	// and may block indefinitely.
 	// It is recommended to use [IProcessor.PutContext] instead.
 	Put(item T)
 	// PutAll add all specified item to the processor.
-	// This method can block until the processor is available for processing new batch,
+	// This method can block until the processor is available for processing a new batch
 	// and may block indefinitely.
 	// It is recommended to use [IProcessor.PutAllContext] instead.
 	PutAll(items []T)
 	// PutContext add item to the processor.
 	// If the context is canceled and the item is not added, then this method will return false.
-	// The context passed in only control the put step, after item added to the processor,
+	// The context passed in only controls the put step. After the item was added to the processor,
 	// the processing will not be canceled by this context.
 	PutContext(ctx context.Context, item T) bool
 	// PutAllContext add all items to the processor.
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	PutAllContext(ctx context.Context, items []T) int
 
-	// Merge add item to the processor using merge function.
-	// This method can block until the processor is available for processing new batch,
+	// Merge add item to the processor using a merge function.
+	// This method can block until the processor is available for processing a new batch
 	// and may block indefinitely.
 	// It is recommended to use [IProcessor.MergeContext] instead.
 	Merge(item T, merge MergeToBatchFn[B, T])
-	// MergeAll add all items to the processor using merge function.
-	// This method can block until the processor is available for processing new batch,
+	// MergeAll add all items to the processor using a merge function.
+	// This method can block until the processor is available for processing a new batch
 	// and may block indefinitely.
 	// It is recommended to use [IProcessor.MergeAllContext] instead.
 	MergeAll(items []T, merge MergeToBatchFn[B, T])
-	// MergeContext add item to the processor using merge function.
+	// MergeContext add item to the processor using a merge function.
 	// If the context is canceled and the item is not added, then this method will return false.
-	// The context passed in only control the put step, after item added to the processor,
+	// The context passed in only controls the put step. After the item was added to the processor,
 	// the processing will not be canceled by this context.
 	MergeContext(ctx context.Context, item T, merge MergeToBatchFn[B, T]) bool
-	// MergeAllContext add all items to the processor using merge function.
+	// MergeAllContext add all items to the processor using a merge function.
 	// If the context is canceled, then this method will return the number of items added to the processor.
 	MergeAllContext(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
-	// Peek access the current batch using provided function.
+	// Peek access the current batch using the provided function.
 	// This method can block until the processor is available.
 	// It is recommended to use [IProcessor.PeekContext] instead.
 	// This method does not count as processing the batch, the batch will still be processed.
 	// Deprecated: Peek* methods will be removed in the future.
 	Peek(reader ProcessBatchFn[B]) error
-	// PeekContext access the current batch using provided function.
+	// PeekContext access the current batch using the provided function.
 	// This method does not count as processing the batch, the batch will still be processed.
 	// Deprecated: Peek* methods will be removed in the future.
 	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
 
-	// ApproxItemCount return number of current item in processor, approximately.
+	// ApproxItemCount return number of current items in the processor, approximately.
 	ApproxItemCount() int64
-	// ItemCount return number of current item in processor.
+	// ItemCount return number of current items in the processor.
 	ItemCount() int64
-	// ItemCountContext return number of current item in processor.
-	// If the context is canceled, then this method will return approximate item count and false.
+	// ItemCountContext return number of current items in the processor.
+	// If the context is canceled, then this method will return an approximate item count and false.
 	ItemCountContext(ctx context.Context) (int64, bool)
 	// Close stop the processor.
-	// This method may process the leftover branch on caller thread.
+	// This method may process the leftover branch on the caller thread.
 	// The implementation of this method may vary, but it must never wait indefinitely.
 	Close() error
 	// CloseContext stop the processor.
-	// This method may process the left-over batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may process the left-over batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	CloseContext(ctx context.Context) error
 	// StopContext stop the processor.
 	// This method does not process leftover batch.
 	StopContext(ctx context.Context) error
-	// DrainContext force process batch util the batch is empty.
-	// This method may process the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// DrainContext force process batch until the batch is empty.
+	// This method may process the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	DrainContext(ctx context.Context) error
 	// FlushContext force process the current batch.
-	// This method may process the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may process the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	FlushContext(ctx context.Context) error
 	// Flush force process the current batch.
-	// This method may process the batch on caller thread.
+	// This method may process the batch on the caller thread.
 	// It is recommended to use [IProcessor.FlushContext] instead.
 	Flush()
 }
 
-// Processor a processor that is running and can process item.
+// Processor is a processor that is running and can process item.
 type Processor[T any, B any] struct {
 	ProcessorSetup[T, B]
 	runConfig[B]
@@ -156,7 +156,7 @@ func (p ProcessorSetup[T, B]) Configure(options ...Option) ProcessorSetup[T, B] 
 	return p
 }
 
-// ItemCount return number of current item in processor.
+// ItemCount return number of current items in processor.
 // This method will block the processor for accurate counting.
 // It is recommended to use [Processor.ItemCountContext] instead.
 func (p *Processor[T, B]) ItemCount() int64 {
@@ -164,8 +164,8 @@ func (p *Processor[T, B]) ItemCount() int64 {
 	return cnt
 }
 
-// ItemCountContext return number of current item in processor.
-// If the context is canceled, then this method will return approximate item count and false.
+// ItemCountContext return number of current items in processor.
+// If the context is canceled, then this method will return an approximate item count and false.
 func (p *Processor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
 	select {
 	case p.blocked <- struct{}{}:
@@ -176,7 +176,7 @@ func (p *Processor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
 	return p.counter, true
 }
 
-// ApproxItemCount return number of current item in processor.
+// ApproxItemCount return number of current items in processor.
 // This method does not block, so the counter may not be accurate.
 func (p *Processor[T, B]) ApproxItemCount() int64 {
 	return p.counter
@@ -218,7 +218,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 	}
 
 	if p.maxWait < 0 && p.maxItem >= 0 {
-		processor.waitUtilFullDispatch()
+		processor.waitUntilFullDispatch()
 		return processor
 	}
 
@@ -226,7 +226,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		if processor.notEmpty != nil {
 			processor.continuousDispatch()
 		} else {
-			processor.waitUtilFullContinuousDispatch()
+			processor.waitUntilFullContinuousDispatch()
 		}
 		return processor
 	}
@@ -236,8 +236,8 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 }
 
 // continuousDispatch create a dispatcher routine that,
-// when batch is empty, wait util it not empty,
-// else process the remaining batch util it became empty.
+// when the batch is empty, wait until it is not empty,
+// else process the remaining batch until it became empty.
 func (p *Processor[T, B]) continuousDispatch() {
 	if p.notEmpty == nil {
 		// Should never happen.
@@ -278,11 +278,11 @@ func (p *Processor[T, B]) continuousDispatch() {
 	}()
 }
 
-// waitUtilFullContinuousDispatch create a dispatcher routine that,
-// when batch is empty, wait util it full,
-// else process the remaining batch util it became empty.
+// waitUntilFullContinuousDispatch create a dispatcher routine that,
+// when the batch is empty, wait until it is full,
+// else process the remaining batch until it became empty.
 // maxItem must be specified by [WithMaxItem].
-func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
+func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 	go func() {
 		for {
 			select {
@@ -293,7 +293,7 @@ func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
 					break
 				}
 				<-p.blocked
-				// if the batch is empty then wait util full to process.
+				// if the batch is empty then wait until full to process.
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
@@ -309,7 +309,7 @@ func (p *Processor[T, B]) waitUtilFullContinuousDispatch() {
 	}()
 }
 
-// timedDispatch create a dispatcher routine that wait util the batch is full or AT LEAST maxWait elapsed.
+// timedDispatch create a dispatcher routine that waits until the batch is full or AT LEAST maxWait elapsed.
 // when maxWait is passed and the batch is empty, it will reset the timer to avoid processing only one item.
 func (p *Processor[T, B]) timedDispatch() {
 	go func() {
@@ -346,9 +346,9 @@ func (p *Processor[T, B]) timedDispatch() {
 	}()
 }
 
-// waitUtilFullDispatch create a dispatcher routine that wait util the batch is full.
+// waitUntilFullDispatch create a dispatcher routine that waits until the batch is full.
 // maxItem must be specified using [WithMaxItem].
-func (p *Processor[T, B]) waitUtilFullDispatch() {
+func (p *Processor[T, B]) waitUntilFullDispatch() {
 	go func() {
 		for {
 			select {
@@ -440,7 +440,7 @@ func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeT
 		}
 	}
 	if p.maxItem > -1 && p.counter >= p.maxItem {
-		// Block util processed.
+		// Block until processed.
 		p.full <- struct{}{}
 		return true
 	}
@@ -448,7 +448,7 @@ func (p *Processor[T, B]) MergeContext(ctx context.Context, item T, merge MergeT
 	return true
 }
 
-// Peek access the current batch using provided function.
+// Peek access the current batch using the provided function.
 // This method can block until the processor is available.
 // It is recommended to use [Processor.PeekContext] instead.
 // This method does not count as processing the batch, the batch will still be processed.
@@ -458,7 +458,7 @@ func (p *Processor[T, B]) Peek(reader ProcessBatchFn[B]) error {
 	return p.PeekContext(nil, reader)
 }
 
-// PeekContext access the current batch using provided function.
+// PeekContext access the current batch using the provided function.
 // This method does not count as processing the batch, the batch will still be processed.
 // Deprecated: Peek* methods will be removed in the future.
 func (p *Processor[T, B]) PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error {
@@ -594,7 +594,7 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 			}
 		}
 		if p.maxItem > -1 && p.counter >= p.maxItem {
-			// Block util processed.
+			// Block until processed.
 			p.full <- struct{}{}
 			continue
 		}
@@ -604,7 +604,7 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 }
 
 // Close stop the processor.
-// This method will process the leftover branch on caller thread.
+// This method will process the leftover branch on the caller thread.
 // Return error if maxCloseWait passed.
 // Timeout can be configured by [WithMaxCloseWait].
 // See getCloseMaxWait for detail.
@@ -615,8 +615,8 @@ func (p *Processor[T, B]) Close() error {
 }
 
 // CloseContext stop the processor.
-// This method will process the leftover branch on caller thread.
-// Context can be used to provide deadline for this method.
+// This method will process the leftover branch on the caller thread.
+// Context can be used to provide a deadline for this method.
 func (p *Processor[T, B]) CloseContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
@@ -657,9 +657,9 @@ func (p *Processor[T, B]) StopContext(ctx context.Context) error {
 	return nil
 }
 
-// DrainContext force process batch util the batch is empty.
-// This method always processes the batch on caller thread.
-// ctx can be used to provide deadline for this method.
+// DrainContext force process batch until the batch is empty.
+// This method always processes the batch on the caller thread.
+// ctx can be used to provide a deadline for this method.
 func (p *Processor[T, B]) DrainContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
@@ -694,8 +694,8 @@ func (p *Processor[T, B]) DrainContext(ctx context.Context) error {
 }
 
 // FlushContext force process the current batch.
-// This method may process the batch on caller thread, depend on concurrent and block settings.
-// Context can be used to provide deadline for this method.
+// This method may process the batch on the caller thread, depending on concurrent and block settings.
+// Context can be used to provide a deadline for this method.
 func (p *Processor[T, B]) FlushContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil

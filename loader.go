@@ -16,7 +16,7 @@ var (
 // ILoader provides common methods of a [Loader].
 type ILoader[K comparable, T any] interface {
 	// Get registers a key to be loaded and wait for it to be loaded.
-	// This method can block until the loader is available for loading new batch.
+	// This method can block until the loader is available for loading a new batch.
 	// It is recommended to use [ILoader.GetContext] instead.
 	Get(key K) (T, error)
 	// GetContext registers a key to be loaded and wait for it to be loaded.
@@ -26,55 +26,55 @@ type ILoader[K comparable, T any] interface {
 	GetContext(ctx context.Context, key K) (T, error)
 
 	// GetAll registers keys to be loaded and wait for all of them to be loaded.
-	// This method can block until the loader is available for loading new batch,
+	// This method can block until the loader is available for loading a new batch
 	// and may block indefinitely.
 	// It is recommended to use [ILoader.GetAllContext] instead.
 	GetAll(keys []K) (map[K]T, error)
 	// GetAllContext registers keys to be loaded and wait for all of them to be loaded.
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	//
-	// In the case of context timed out, keys that are loaded will be returned along with error.
+	// In the case of context timed out, keys that are loaded will be returned along with an error.
 	// Cancel the context may stop the loader from loading the key.
 	GetAllContext(ctx context.Context, keys []K) (map[K]T, error)
 
 	// Load registers a key to be loaded and return a [Future] for waiting for the result.
-	// This method can block until the loader is available for loading new batch.
+	// This method can block until the loader is available for loading a new batch.
 	// It is recommended to use [ILoader.LoadContext] instead.
 	Load(key K) *Future[T]
 	// LoadContext registers a key to be loaded and return a [Future] for waiting for the result.
 	//
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
 	LoadContext(ctx context.Context, key K) *Future[T]
 
 	// LoadAll registers keys to be loaded and return a [IFuture] for waiting for the combined result.
-	// This method can block until the processor is available for processing new batch,
+	// This method can block until the processor is available for processing a new batch,
 	// and may block indefinitely.
 	// It is recommended to use [ILoader.LoadAllContext] instead.
 	LoadAll(keys []K) map[K]*Future[T]
 	// LoadAllContext registers keys to be loaded and return a [Future] for waiting for the combined result.
 	//
-	// Context can be used to provide deadline for this method.
+	// Context can be used to provide a deadline for this method.
 	// Cancel the context may stop the loader from loading the key.
 	LoadAllContext(ctx context.Context, keys []K) map[K]*Future[T]
 
 	// Close stop the loader.
-	// This method may process the leftover branch on caller thread.
+	// This method may process the leftover branch on the caller thread.
 	// The implementation of this method may vary, but it must never wait indefinitely.
 	Close() error
 	// CloseContext stop the loader.
-	// This method may load the left-over batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may load the left-over batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	CloseContext(ctx context.Context) error
 	// StopContext stop the loader.
-	// This method does not load leftover batch.
+	// This method does not load a leftover batch.
 	StopContext(ctx context.Context) error
 	// FlushContext force load the current batch.
-	// This method may load the batch on caller thread.
-	// Context can be used to provide deadline for this method.
+	// This method may load the batch on the caller thread.
+	// Context can be used to provide a deadline for this method.
 	FlushContext(ctx context.Context) error
 	// Flush force load the current batch.
-	// This method may load the batch on caller thread.
+	// This method may load the batch on the caller thread.
 	// It is recommended to use [ILoader.FlushContext] instead.
 	Flush()
 }
@@ -104,7 +104,7 @@ var ErrLoadMissingResult = errors.New("empty missing result for key")
 
 // NewLoader create a LoaderSetup using specified functions.
 // See [LoaderSetup.Configure] and [Option] for available configuration.
-// The result [LoaderSetup] is in setup state.
+// The result [LoaderSetup] is in the setup state.
 //
 // Call [LoaderSetup.Run] with a handler to create a [Loader] that can load item.
 // By default, the processor operates with the following configuration:
@@ -169,7 +169,7 @@ func (p LoaderSetup[K, T]) WithMissingResultError(err error) LoaderSetup[K, T] {
 }
 
 // Run create a [Loader] that can accept item.
-// Accept a [LoadBatchFn]  and a list of [RunOption] of type [LoadKeys].
+// Accept a [LoadBatchFn] and a list of [RunOption] of type [LoadKeys].
 func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[LoadKeys[K]]) *Loader[K, T] {
 	loader := Loader[K, T]{
 		loading:            make(map[K]*Future[T]),
@@ -219,7 +219,7 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 }
 
 // Get registers a key to be loaded and wait for it to be loaded.
-// This method can block until the loader is available for loading new batch.
+// This method can block until the loader is available for loading a new batch.
 // It is recommended to use [Loader.GetContext] instead.
 func (l *Loader[K, T]) Get(key K) (T, error) {
 	//nolint:staticcheck
@@ -228,14 +228,14 @@ func (l *Loader[K, T]) Get(key K) (T, error) {
 
 // GetContext registers a key to be loaded and wait for it to be loaded.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 func (l *Loader[K, T]) GetContext(ctx context.Context, key K) (T, error) {
 	return l.LoadContext(ctx, key).GetContext(ctx)
 }
 
 // Load registers a key to be loaded and return a [IFuture] for waiting for the result.
-// This method can block until the loader is available for loading new batch.
+// This method can block until the loader is available for loading a new batch.
 // It is recommended to use [Loader.LoadContext] instead.
 func (l *Loader[K, T]) Load(key K) *Future[T] {
 	//nolint:staticcheck
@@ -244,7 +244,7 @@ func (l *Loader[K, T]) Load(key K) *Future[T] {
 
 // LoadContext registers a key to be loaded and return a [Future] for waiting for the result.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 func (l *Loader[K, T]) LoadContext(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
@@ -289,7 +289,7 @@ func (l *Loader[K, T]) LoadContext(ctx context.Context, key K) *Future[T] {
 }
 
 // GetAll registers keys to be loaded and wait for all of them to be loaded.
-// This method can block until the loader is available for loading new batch,
+// This method can block until the loader is available for loading a new batch
 // and may block indefinitely.
 // It is recommended to use [Loader.GetAllContext] instead.
 func (l *Loader[K, T]) GetAll(keys []K) (map[K]T, error) {
@@ -298,9 +298,9 @@ func (l *Loader[K, T]) GetAll(keys []K) (map[K]T, error) {
 }
 
 // GetAllContext registers keys to be loaded and wait for all of them to be loaded.
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 //
-// In the case of context timed out, keys that are loaded will be returned along with error.
+// In the case of context timed out, keys that are loaded will be returned along with an error.
 // Cancel the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) GetAllContext(ctx context.Context, keys []K) (map[K]T, error) {
@@ -320,7 +320,7 @@ func (l *Loader[K, T]) GetAllContext(ctx context.Context, keys []K) (map[K]T, er
 }
 
 // LoadAll registers keys to be loaded and return a [IFuture] for waiting for the combined result.
-// This method can block until the processor is available for processing new batch,
+// This method can block until the processor is available for processing a new batch
 // and may block indefinitely.
 // It is recommended to use [Loader.LoadAllContext] instead.
 func (l *Loader[K, T]) LoadAll(keys []K) map[K]*Future[T] {
@@ -330,7 +330,7 @@ func (l *Loader[K, T]) LoadAll(keys []K) map[K]*Future[T] {
 
 // LoadAllContext registers keys to be loaded and return a [IFuture] for waiting for the combined result.
 //
-// Context can be used to provide deadline for this method.
+// Context can be used to provide a deadline for this method.
 // Cancel the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Future[T] {
@@ -377,20 +377,20 @@ func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Futu
 }
 
 // Close stop the loader.
-// This method will process the leftover branch on caller thread.
+// This method will process the leftover branch on a caller thread.
 func (l *Loader[K, T]) Close() error {
 	return l.processor.Close()
 }
 
 // CloseContext stop the loader.
-// This method may load the left-over batch on caller thread.
-// Context can be used to provide deadline for this method.
+// This method may load the left-over batch on a caller thread.
+// Context can be used to provide a deadline for this method.
 func (l *Loader[K, T]) CloseContext(ctx context.Context) error {
 	return l.processor.CloseContext(ctx)
 }
 
 // StopContext stop the loader.
-// This method does not load leftover batch.
+// This method does not load the leftover batch.
 func (l *Loader[K, T]) StopContext(ctx context.Context) error {
 	err := l.processor.StopContext(ctx)
 	l.lock.Lock()
@@ -405,15 +405,15 @@ func (l *Loader[K, T]) StopContext(ctx context.Context) error {
 }
 
 // Flush force load the current batch.
-// This method may load the batch on caller thread.
+// This method may load the batch on the caller thread.
 // It is recommended to use [Loader.FlushContext] instead.
 func (l *Loader[K, T]) Flush() {
 	l.processor.Flush()
 }
 
 // FlushContext force load the current batch.
-// This method may load the batch on caller thread.
-// Context can be used to provide deadline for this method.
+// This method may load the batch on the caller thread.
+// Context can be used to provide a deadline for this method.
 func (l *Loader[K, T]) FlushContext(ctx context.Context) error {
 	return l.processor.FlushContext(ctx)
 }

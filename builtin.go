@@ -95,9 +95,9 @@ type ExtractFn[T any, V any] func(T) V
 type CombineFn[T any] func(T, T) T
 
 // AddToMapUsing create [MergeToBatchFn]
-// that add item to map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
-// The original value will be passed as 1st parameter to the [CombineFn].
-// If [CombineFn] is nil, duplicated key will be replaced.
+// that add item to the map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
+// The original value will be passed as the 1st parameter to the [CombineFn].
+// If [CombineFn] is nil, any duplicated key will be replaced.
 // Deprecated: use [NewMapProcessor] instead.
 func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
 	if combiner == nil {
@@ -121,8 +121,8 @@ func AddToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, 
 
 // AddSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
 // and apply [CombineFn] if key duplicated.
-// The original value will be passed as 1st parameter to the [CombineFn].
-// If [CombineFn] is nil, duplicated key will be replaced.
+// The original value will be passed as the 1st parameter to the [CombineFn].
+// If [CombineFn] is nil, any duplicated key will be replaced.
 // Deprecated: use [NewSelfMapProcessor] instead.
 func AddSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
 	if combiner == nil {
@@ -184,7 +184,7 @@ func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 	}
 }
 
-// CountMapKeys create a counter that count keys in map.
+// CountMapKeys create a counter that counts keys in map.
 // Deprecated: use [WithBatchCountMapKeys] instead.
 func CountMapKeys[V any, K comparable]() func(map[K]V, int64) int64 {
 	return func(m map[K]V, _ int64) int64 {
@@ -198,7 +198,7 @@ func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
 }
 
 // NewMapProcessor prepare a processor that backed by a map.
-// If [CombineFn] is nil, duplicated key will be replaced.
+// If [CombineFn] is nil, any duplicated key will be replaced.
 func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], AddToMapUsing(extractor, combiner))
 }
