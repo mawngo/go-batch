@@ -29,12 +29,12 @@ import (
 
 func main() {
 	sum := int32(0)
-	// First create a batch.ProcessorSetup by specifying the batch initializer and merger.
+	// First, create a batch.ProcessorSetup by specifying the batch initializer and merger.
 	//
 	// Initializer will be called to create a new batch, 
 	// here the batch.InitSlice[int] will create a slice.
-	// Merger will be called to add item to a batch, 
-	// here the addToSlice[int] will add item to the slice.
+	// Merger will be called to add an item to a batch, 
+	// here the addToSlice[int] will add the item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built-in 
@@ -60,8 +60,8 @@ func main() {
 		processor.Put(ctx, 1)
 	}
 	// Remember to close the running processor before your application stopped.
-	// Closing will force the processor to process the left-over item,
-	// any item added after closing is not guarantee to be processed.
+	// Closing will force the processor to process the left-over items.
+	// Any item added after closing is not guaranteed to be processed.
 	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
