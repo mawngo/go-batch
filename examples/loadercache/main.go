@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/mawngo/go-batch/v3"
+	"maps"
 	"strconv"
 	"sync"
 )
@@ -51,7 +52,5 @@ func (c *myCache) Get(k int) (string, bool) {
 func (c *myCache) AddAll(m map[int]string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	for k, v := range m {
-		c.data[k] = v
-	}
+	maps.Copy(c.data, m)
 }

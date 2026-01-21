@@ -15,7 +15,7 @@ func main() {
 		Run(summingValByKey(count))
 
 	ctx := context.Background()
-	for i := 0; i < 1_000_000; i++ {
+	for i := range 1_000_000 {
 		processor.Put(ctx, i)
 	}
 	if err := processor.Close(ctx); err != nil {

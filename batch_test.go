@@ -123,10 +123,10 @@ func TestBatched(t *testing.T) {
 
 func runSumPutTest(t *testing.T, processor IProcessor[int, []int], sum *int32) {
 	ctx := context.Background()
-	for i := 0; i < 500_000; i++ {
+	for range 500_000 {
 		processor.Put(ctx, 1)
 	}
-	for i := 0; i < 50_000; i++ {
+	for range 50_000 {
 		processor.PutAll(ctx, new1x10Slice())
 	}
 	if err := processor.Close(ctx); err != nil {
@@ -145,19 +145,15 @@ func TestBatchedMultiGoroutine(t *testing.T) {
 
 	ctx := context.Background()
 	wg := sync.WaitGroup{}
-	for i := 0; i < 500_000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 500_000 {
+		wg.Go(func() {
 			processor.Put(ctx, 1)
-		}()
+		})
 	}
-	for i := 0; i < 50_000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50_000 {
+		wg.Go(func() {
 			processor.PutAll(ctx, new1x10Slice())
-		}()
+		})
 	}
 	if err := processor.Close(ctx); err != nil {
 		t.Fatalf("error closing processor: %v", err)
@@ -177,10 +173,10 @@ func TestBatchedSplit(t *testing.T) {
 			Run(summing(&sum), WithBatchSplitSliceEqually[int](m))
 
 		ctx := context.Background()
-		for i := 0; i < 50_000; i++ {
+		for range 50_000 {
 			processor.Put(ctx, 1)
 		}
-		for i := 0; i < 5_000; i++ {
+		for range 5_000 {
 			processor.PutAll(ctx, new1x10Slice())
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -200,7 +196,7 @@ func TestCloseCancelContext(t *testing.T) {
 			return nil
 		})
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		processor.Put(context.Background(), 1)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -217,7 +213,7 @@ func TestDrain(t *testing.T) {
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
 		Run(summing(&sum))
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		processor.Put(context.Background(), 1)
 	}
 	if sum != 0 {
@@ -243,7 +239,7 @@ func TestFlush(t *testing.T) {
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
 		Run(summing(&sum))
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		processor.Put(context.Background(), 1)
 	}
 	if sum != 0 {
@@ -270,7 +266,7 @@ func TestBatchedWait(t *testing.T) {
 			Configure(WithMaxItem(10), WithMaxWait(500*time.Millisecond)).
 			Run(summing(&sum))
 		ctx := context.Background()
-		for i := 0; i < 9; i++ {
+		for range 9 {
 			processor.Put(ctx, 1)
 		}
 		time.Sleep(1 * time.Second)
@@ -347,7 +343,7 @@ func TestErrorHandling(t *testing.T) {
 				return nil
 			}))
 		ctx := context.Background()
-		for i := 0; i < 1_000_000; i++ {
+		for range 1_000_000 {
 			processor.Put(ctx, 1)
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -371,7 +367,7 @@ func TestErrorHandling(t *testing.T) {
 				},
 				func(ints []int, count int64, _ error) error {
 					slog.Info("receive error of", slog.Any("ints", ints))
-					for i := int64(0); i < count; i++ {
+					for i := range count {
 						atomic.AddInt32(&errCnt, int32(ints[i]))
 					}
 					return nil
@@ -383,7 +379,7 @@ func TestErrorHandling(t *testing.T) {
 			))
 
 		ctx := context.Background()
-		for i := 0; i < 1_000_000; i++ {
+		for range 1_000_000 {
 			processor.Put(ctx, 1)
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -405,7 +401,7 @@ func TestErrorHandling(t *testing.T) {
 				return nil
 			}))
 		ctx := context.Background()
-		for i := 0; i < 1_000_000; i++ {
+		for range 1_000_000 {
 			processor.Put(ctx, 1)
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -427,7 +423,7 @@ func TestErrorHandling(t *testing.T) {
 				return nil
 			}))
 		ctx := context.Background()
-		for i := 0; i < 1_000; i++ {
+		for range 1_000 {
 			processor.Put(ctx, 1)
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -452,7 +448,7 @@ func TestErrorHandling(t *testing.T) {
 				},
 				func(ints []int, count int64, _ error) error {
 					slog.Info("receive error of", slog.Any("ints", ints))
-					for i := int64(0); i < count; i++ {
+					for i := range count {
 						atomic.AddInt32(&errCnt, int32(ints[i]))
 					}
 					return nil
@@ -463,7 +459,7 @@ func TestErrorHandling(t *testing.T) {
 				},
 			))
 		ctx := context.Background()
-		for i := 0; i < 1_000_000; i++ {
+		for range 1_000_000 {
 			processor.Put(ctx, 1)
 		}
 		if err := processor.Close(ctx); err != nil {
@@ -593,13 +589,13 @@ func TestCustomCounter(t *testing.T) {
 		return i
 	}, nil).
 		Configure(WithMaxItem(11), WithMaxWait(Unset)).
-		Run(func(_ map[int]int, i int64) error {
+		Run(func(_ map[int]int, _ int64) error {
 			atomic.AddInt32(&touched, 1)
 			return nil
 		}, WithBatchCountMapKeys[int, int]())
 
 	ctx := context.Background()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		processor.Put(ctx, 1)
 	}
 
@@ -611,7 +607,7 @@ func TestCustomCounter(t *testing.T) {
 		t.Fatal("Touched when counter is not reached limit")
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		processor.Put(ctx, i+1)
 	}
 

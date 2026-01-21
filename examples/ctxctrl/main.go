@@ -24,7 +24,7 @@ func main() {
 	).
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
 		Run(summing(&sum))
-	for i := 0; i < 1_000_000; i++ {
+	for range 1_000_000 {
 		processor.Put(context.Background(), itemWithContext{
 			// This context will be passed to the batch process function and used to cancel the processing.
 			ctx:  context.Background(),

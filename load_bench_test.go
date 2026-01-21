@@ -17,7 +17,7 @@ func BenchmarkLoad(b *testing.B) {
 			sum := 0
 			b.StartTimer()
 
-			for i := 0; i < 100_000; i++ {
+			for range 100_000 {
 				waits = append(waits, loader.Load(ctx, 1))
 			}
 			for _, future := range waits {

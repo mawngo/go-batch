@@ -13,7 +13,7 @@ func main() {
 		Run(summing(&sum))
 
 	ctx := context.Background()
-	for i := 0; i < 1_000_000; i++ {
+	for range 1_000_000 {
 		processor.Put(ctx, 1)
 	}
 	if err := processor.Close(ctx); err != nil {

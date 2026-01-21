@@ -29,7 +29,7 @@ func main() {
 	processor := setup.Run(summing(&sum))
 
 	ctx := context.Background()
-	for i := 0; i < 1_000_000; i++ {
+	for range 1_000_000 {
 		// Add item to the processor.
 		processor.Put(ctx, 1)
 	}

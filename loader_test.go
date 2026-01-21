@@ -11,16 +11,16 @@ import (
 )
 
 func TestBatchedLoad(t *testing.T) {
-	testLoad := func(loader ILoader[int, int], touched *int32) {
+	testLoad := func(t *testing.T, loader ILoader[int, int], touched *int32) {
 		ctx := context.Background()
 		loadings := make([]*Future[int], 0, 55_000)
 		sum := 0
 
-		for i := 0; i < 50_000; i++ {
+		for range 50_000 {
 			loadings = append(loadings, loader.Load(ctx, 1))
 		}
 
-		for i := 0; i < 1000; i++ {
+		for range 1_000 {
 			go func() {
 				loader.Load(ctx, 1)
 			}()
@@ -47,7 +47,7 @@ func TestBatchedLoad(t *testing.T) {
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(50_000+1000+1), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched))
-		testLoad(loader, &touched)
+		testLoad(t, loader, &touched)
 	})
 
 	t.Run("Load (Keys)", func(t *testing.T) {
@@ -55,19 +55,19 @@ func TestBatchedLoad(t *testing.T) {
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
-		testLoad(loader, &touched)
+		testLoad(t, loader, &touched)
 	})
 
-	testLoadAll := func(loader ILoader[int, int], touched *int32) {
+	testLoadAll := func(t *testing.T, loader ILoader[int, int], touched *int32) {
 		ctx := context.Background()
 		loadings := make([]map[int]*Future[int], 0, 55_000)
 		sum := 0
 
-		for i := 0; i < 50_000; i++ {
+		for range 50_000 {
 			loadings = append(loadings, loader.LoadAll(ctx, []int{1, 2, 3}))
 		}
 
-		for i := 0; i < 1000; i++ {
+		for range 1_000 {
 			go func() {
 				loader.LoadAll(ctx, []int{1, 2, 3})
 			}()
@@ -95,7 +95,7 @@ func TestBatchedLoad(t *testing.T) {
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(50_000*3+1000*3+1), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched))
-		testLoadAll(loader, &touched)
+		testLoadAll(t, loader, &touched)
 	})
 
 	t.Run("LoadAll (Keys)", func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestBatchedLoad(t *testing.T) {
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(10), WithMaxWait(1*time.Second)).
 			Run(loadMapInt1(&touched), WithLoaderCountKeys[int]())
-		testLoadAll(loader, &touched)
+		testLoadAll(t, loader, &touched)
 	})
 }
 
@@ -118,11 +118,11 @@ func TestBatchedLoadCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	loadings := make([]*Future[int], 0, 15_000)
 
-	for i := 0; i < 10_000; i++ {
+	for range 10_000 {
 		loadings = append(loadings, loader.Load(ctx, 1))
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1_000 {
 		m := loader.LoadAll(ctx, []int{1, 2})
 		for _, loading := range m {
 			loadings = append(loadings, loading)
@@ -166,7 +166,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 		t.Fatalf("loading not reuse pending future")
 	}
 
-	for i := 0; i < 1000; i++ {
+	for range 1_000 {
 		m := loader.LoadAll(ctx, []int{1, 2})
 		if m[1] != loading1 {
 			t.Fatalf("loading not reuse pending future")
@@ -177,10 +177,8 @@ func TestBatchedLoadReuse(t *testing.T) {
 	}
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 1_000 {
+		wg.Go(func() {
 			if loader.Load(ctx, 1) != loading1 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
 			}
@@ -188,14 +186,12 @@ func TestBatchedLoadReuse(t *testing.T) {
 			if loader.Load(ctx, 2) != loading2 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 1_000 {
+		wg.Go(func() {
 			m := loader.LoadAll(ctx, []int{1, 2})
 			if m[1] != loading1 {
 				panic("loading not reuse pending future " + strconv.Itoa(int(touched)))
@@ -203,7 +199,7 @@ func TestBatchedLoadReuse(t *testing.T) {
 			if m[2] != loading2 {
 				panic("loading not reuse pending future" + strconv.Itoa(int(touched)))
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if err := loader.Close(ctx); err != nil {
@@ -223,7 +219,7 @@ func TestBatchedLoadDisabled(t *testing.T) {
 	ctx := context.Background()
 	sum := 0
 
-	for i := 0; i < 10_000; i++ {
+	for range 10_000 {
 		future := loader.Load(ctx, 1)
 		if !future.IsDone() {
 			t.Fatalf("async load when disabled")
@@ -232,7 +228,7 @@ func TestBatchedLoadDisabled(t *testing.T) {
 		sum += v
 	}
 
-	for i := 0; i < 5_000; i++ {
+	for range 5_000 {
 		futures := loader.LoadAll(ctx, []int{1, 2})
 		for _, future := range futures {
 			if !future.IsDone() {
@@ -262,7 +258,7 @@ func TestStopContext(t *testing.T) {
 
 	ctx := context.Background()
 	loadings := make([]*Future[int], 0, 10_000)
-	for i := 0; i < 10_000; i++ {
+	for range 10_000 {
 		loadings = append(loadings, loader.Load(ctx, 1))
 	}
 	if touched > 0 {

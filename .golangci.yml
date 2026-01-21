@@ -1,8 +1,9 @@
-version: 2
+version: "2"
 run:
   concurrency: 4
-  timeout: 1m
+  timeout: 2m
   issues-exit-code: 1
+
 output:
   show-stats: false
 
@@ -14,27 +15,28 @@ linters:
       - legacy
       - std-error-handling
   enable:
+    - asasalint
+    - asciicheck
+    - bodyclose
+    - durationcheck
     - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - gochecknoinits
+    - gocritic
+    - godot
     - govet
     - ineffassign
-    - staticcheck
-    - unused
-    - bodyclose
-    - asciicheck
-    - errorlint
-    - godot
-    - gocritic
-    - prealloc
-    - gochecknoinits
-    - revive
-    - whitespace
-    - unconvert
-    - musttag
-    - errname
-    - reassign
-    - usestdlibvars
-    - mirror
     - loggercheck
-    - durationcheck
-    - asasalint
-    - errchkjson
+    - mirror
+    - modernize
+    - musttag
+    - prealloc
+    - reassign
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+    - usestdlibvars
+    - whitespace

@@ -15,7 +15,7 @@ func main() {
 	loader := batch.NewLoader[int, string]().
 		// Configure the loader.
 		// All pending load requests will be processed when one of the following limits is reached.
-		Configure(batch.WithMaxItem(100), batch.WithMaxWait(1*time.Second)).
+		Configure(batch.WithMaxItem(100), batch.WithMaxWait(2*time.Second)).
 		// Like when using the processor,
 		// start the loader by providing a LoadBatchFn,
 		// and optionally additional run configuration.
@@ -24,7 +24,7 @@ func main() {
 
 	ctx := context.Background()
 	wg := sync.WaitGroup{}
-	for i := 0; i < 100_000; i++ {
+	for i := range 100_000 {
 		k := i % 10
 		wg.Go(func() {
 			// Use the loader.

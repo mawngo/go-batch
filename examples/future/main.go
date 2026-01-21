@@ -27,7 +27,7 @@ func main() {
 	waiting := make([]*WaitedItem, 0, 1_000_000)
 
 	ctx := context.Background()
-	for i := 0; i < 1_000_000; i++ {
+	for range 1_000_000 {
 		item := &WaitedItem{item: 1}
 		processor.Put(ctx, item)
 		waiting = append(waiting, item)

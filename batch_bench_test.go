@@ -116,7 +116,7 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 			})
 		ctx := context.Background()
 		for b.Loop() {
-			for i := 0; i < 10_000; i++ {
+			for range 10_000 {
 				processor.Put(ctx, 1)
 			}
 		}
@@ -135,7 +135,7 @@ func BenchmarkPutUnderLoad(b *testing.B) {
 			})
 		ctx := context.Background()
 		for b.Loop() {
-			for i := 0; i < 10_000; i++ {
+			for range 10_000 {
 				processor.Put(ctx, 1)
 			}
 		}
