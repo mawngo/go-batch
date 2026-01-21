@@ -9,7 +9,10 @@ import (
 func main() {
 	sum := int32(0)
 	processor := batch.NewSliceProcessor[int]().
-		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
+		Configure(
+			batch.WithMaxWait(batch.Unset),
+			batch.WithMaxConcurrency(5),
+			batch.WithMaxItem(10)).
 		Run(summing(&sum))
 
 	ctx := context.Background()

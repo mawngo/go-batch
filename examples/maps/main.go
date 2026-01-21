@@ -11,7 +11,10 @@ var mu sync.Mutex
 func main() {
 	count := make(map[int]int)
 	processor := batch.NewSelfMapProcessor[int, int](mod2, nil).
-		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
+		Configure(
+			batch.WithMaxWait(batch.Unset),
+			batch.WithMaxConcurrency(5),
+			batch.WithMaxItem(10)).
 		Run(summingValByKey(count))
 
 	ctx := context.Background()

@@ -89,8 +89,11 @@ type Processor[T any, B any] struct {
 // See [ProcessorSetup.Configure] and [Option] for available configuration.
 // The result [ProcessorSetup] is in the setup state.
 // Call [ProcessorSetup.Run] with a handler to create a [Processor] that can accept item.
-// It is recommended to set at least maxWait by [WithMaxWait] or maxItem by [WithMaxItem].
-// By default, the processor operates similarly to aggressive mode, use Configure to change its behavior.
+//
+// By default, the max wait time is 0 (no-wait) and the max item is [Unset] (unlimited), which makes
+// the processor operate similarly to aggressive mode.
+// Use [ProcessorSetup.Configure] to change its behavior. It is recommended to set at least maxWait by [WithMaxWait]
+// or maxItem by [WithMaxItem] and BOTH if you enabled concurrency.
 func NewProcessor[T any, B any](initFn InitBatchFn[B], mergeFn MergeToBatchFn[B, T]) ProcessorSetup[T, B] {
 	c := processorConfig{
 		maxWait: 0,
@@ -124,7 +127,7 @@ func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 	return p.counter, true
 }
 
-// ApproxItemCount return number of current items in processor.
+// ApproxItemCount return number of current items in the processor.
 // This method does not block, so the counter may not be accurate.
 func (p *Processor[T, B]) ApproxItemCount() int64 {
 	return p.counter
@@ -241,7 +244,7 @@ func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 					break
 				}
 				<-p.blocked
-				// if the batch is empty then wait until full to process.
+				// if the batch is empty, then wait until full to process.
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
@@ -546,8 +549,8 @@ func (p *Processor[T, B]) Drain(ctx context.Context) error {
 }
 
 // Flush force process the current batch.
-// This method may process the batch on caller thread, depend on concurrent and block settings.
-// Context can be used to provide deadline for this method.
+// This method may process the batch on the caller thread, depending on concurrent and block settings.
+// Context can be used to provide a deadline for this method.
 func (p *Processor[T, B]) Flush(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil

@@ -38,7 +38,7 @@ func main() {
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
 	// The library already defined some built-in 
-	// initializers and constructors functions for common data types,
+	// initializers, mergers and constructors for common data types,
 	// but you can always define your own initializer and merger.
 	//
 	// This equals to: batch.NewSliceProcessor().

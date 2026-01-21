@@ -44,7 +44,7 @@ type RecoverBatchFn[B any] func(B, int64, error) error
 // LoggingErrorHandler default error handler,
 // it is included in [RecoverBatchFn] chain if there is no other error handler.
 //
-// Can be disabled by using [WithBatchErrorHandlers] with empty slice or [WithDisabledDefaultProcessErrorLog].
+// Can be disabled by using [WithBatchErrorHandlers] with an empty slice or [WithDisabledDefaultProcessErrorLog].
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
 	return err
@@ -73,13 +73,13 @@ func addToSlice[T any](b []T, item T) []T {
 }
 
 // NewMapProcessor prepare a processor that backed by a map.
-// If [CombineFn] is nil, duplicated key will be replaced.
+// If [CombineFn] is nil, the duplicated key will be replaced.
 func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], addToMapUsing(extractor, combiner))
 }
 
 // NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
-// If [CombineFn] is nil, duplicated key will be replaced.
+// If [CombineFn] is nil, the duplicated key will be replaced.
 func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
 	return NewProcessor(InitMap[K, T], addSelfToMapUsing(keyExtractor, combiner))
 }

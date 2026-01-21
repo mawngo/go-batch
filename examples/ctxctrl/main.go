@@ -22,7 +22,10 @@ func main() {
 			return b
 		},
 	).
-		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
+		Configure(
+			batch.WithMaxWait(batch.Unset),
+			batch.WithMaxConcurrency(5),
+			batch.WithMaxItem(10)).
 		Run(summing(&sum))
 	for range 1_000_000 {
 		processor.Put(context.Background(), itemWithContext{

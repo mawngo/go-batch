@@ -13,7 +13,7 @@ func main() {
 			b = append(b, item)
 			return b
 		},
-	).Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
+	).Configure(batch.WithMaxWait(batch.Unset), batch.WithMaxConcurrency(5), batch.WithMaxItem(10)).
 		Run(func(items []*WaitedItem, _ int64) error {
 			// Do stuff...
 			// Then notify the future.
