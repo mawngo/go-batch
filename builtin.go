@@ -42,9 +42,9 @@ type ProcessBatchFn[B any] func(B, int64) error
 type RecoverBatchFn[B any] func(B, int64, error) error
 
 // LoggingErrorHandler default error handler,
-// it is included in [RecoverBatchFn] chain if there is no other error handler.
+// which is always included in the [RecoverBatchFn] error handling chain unless disabled.
 //
-// Can be disabled by using [WithBatchErrorHandlers] with an empty slice or [WithDisabledDefaultProcessErrorLog].
+// Can be disabled by using [WithDisabledDefaultProcessErrorLog].
 func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	slog.Error("error processing batch", slog.Any("count", count), slog.Any("err", err))
 	return err

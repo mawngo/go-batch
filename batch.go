@@ -10,7 +10,7 @@ import (
 
 var _ IProcessor[any, any] = (*Processor[any, any])(nil)
 
-// ProcessorSetup is a batch processor that is in the setup phase (not running).
+// ProcessorSetup is a batch processor in the setup phase (not running).
 // You cannot put an item into this processor; use [ProcessorSetup.Run] to create a [Processor] that can accept items.
 // See [Option] for available options.
 type ProcessorSetup[T any, B any] struct {
@@ -61,7 +61,7 @@ type IProcessor[T any, B any] interface {
 	Flush(ctx context.Context) error
 }
 
-// Processor is a processor that is running and can process items.
+// Processor is a processor running and can process items.
 type Processor[T any, B any] struct {
 	ProcessorSetup[T, B]
 	runConfig[B]
@@ -148,13 +148,12 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		closed:         make(chan struct{}),
 	}
 
-	// if errorHandlers is empty, then add a default logging handler.
-	if !p.isDisableErrorLogging {
-		processor.errorHandlers = []RecoverBatchFn[B]{LoggingErrorHandler[B]}
-	}
-
 	for i := range options {
 		options[i](&processor.runConfig)
+	}
+	// Always add a default error logging handler.
+	if !p.isDisableErrorLogging {
+		processor.errorHandlers = append(processor.errorHandlers, LoggingErrorHandler[B])
 	}
 
 	if p.isAggressiveMode() {
@@ -464,7 +463,7 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 // This method will process the leftover batch on the caller thread.
 //
 // Context can be used to provide a deadline for this method,
-// Context does not affect a batch that is already being processed.
+// Context does not affect a batch already being processed.
 func (p *Processor[T, B]) Close(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
