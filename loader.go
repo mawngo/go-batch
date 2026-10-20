@@ -126,7 +126,7 @@ type LoaderSetup[K comparable, T any] struct {
 	missingResultError error
 }
 
-// Loader is an [ILoader] that is running and can load items.
+// Loader is an [ILoader] running and can load items.
 type Loader[K comparable, T any] struct {
 	processor *Processor[K, LoadKeys[K]]
 
@@ -322,8 +322,8 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 // Close stops the loader.
 // This method will load the left-over batch on the caller thread.
 //
-// Context can be used to provide a deadline for this method,
-// Context does not affect a batch that is already being processed.
+// Context can be used to provide a deadline for this method.
+// Context does not affect a batch already being processed.
 func (l *Loader[K, T]) Close(ctx context.Context) error {
 	return l.processor.Close(ctx)
 }
@@ -355,7 +355,7 @@ func (l *Loader[K, T]) Flush(ctx context.Context) error {
 type Future[T any] struct {
 	// ch is used to notify that the future is completed.
 	ch chan struct{}
-	// batchID is used to identify the id of the batch that is loading this future.
+	// batchID is used to identify the id of the batch loading this future.
 	batchID *byte
 
 	result T
