@@ -14,12 +14,13 @@ func main() {
 	// First create a batch.LoaderSetup
 	loader := batch.NewLoader[int, string]().
 		// Configure the loader.
-		// All pending load requests will be processed when one of the following limits is reached.
+		// All pending load requests will be processed when one of the following
+		// limits is reached.
 		Configure(batch.WithMaxItem(100), batch.WithMaxWait(2*time.Second)).
 		// Like when using the processor,
 		// start the loader by providing a LoadBatchFn,
 		// and optionally additional run configuration.
-		// This will create a *batch.Loader that can accept item.
+		// This will create a *batch.Loader that can accept items.
 		Run(load(&loadedCount))
 
 	ctx := context.Background()
@@ -28,7 +29,7 @@ func main() {
 		k := i % 10
 		wg.Go(func() {
 			// Use the loader.
-			// Alternately, you can use the Load method
+			// Alternatively, you can use the Load method
 			// future := loader.Load(k)
 			// ...
 			// v, err := future.Get()
@@ -43,15 +44,15 @@ func main() {
 		})
 	}
 	wg.Wait()
-	// Remember to close the running load before your application stopped.
-	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not a guarantee to be processed
+	// Remember to close the running loader before your application stops.
+	// Closing will force the loader to load the left-over requests,
+	// any load request after the loader is closed is not guaranteed to be processed
 	// and may block forever.
 	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
-	// If you do not want to load left over requests, then use StopContext instead.
-	// if err := loader.StopContext(context.Background()); err != nil {
+	// If you do not want to load leftover requests, then use Stop instead.
+	// if err := loader.Stop(context.Background()); err != nil {
 	//     panic(err)
 	// }
 	if loadedCount > 1 {

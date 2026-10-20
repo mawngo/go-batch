@@ -15,46 +15,46 @@ var (
 
 // IFuture is a future that can be used to get the result of a task.
 type IFuture[T any] interface {
-	// Get wait until the result is available.
+	// Get waits until the result is available.
 	// The context can be used to cancel the wait (not the task).
 	Get(ctx context.Context) (T, error)
 }
 
 // ILoader provides common methods of a [Loader].
 type ILoader[K comparable, T any] interface {
-	// Get registers a key to be loaded and wait for it to be loaded.
+	// Get registers a key to be loaded and waits for it to be loaded.
 	//
 	// Context can be used to provide a deadline for this method.
-	// Cancel the context may stop the loader from loading the key.
+	// Cancelling the context may stop the loader from loading the key.
 	Get(ctx context.Context, key K) (T, error)
 
-	// GetAll registers keys to be loaded and wait for all of them to be loaded.
+	// GetAll registers keys to be loaded and waits for all of them to be loaded.
 	// Context can be used to provide a deadline for this method.
 	//
-	// In the case of context timed out, keys that are loaded will be returned along with an error.
-	// Cancel the context may stop the loader from loading the key.
+	// In the case of the context timing out, keys that are loaded will be returned along with an error.
+	// Cancelling the context may stop the loader from loading the key.
 	GetAll(ctx context.Context, keys []K) (map[K]T, error)
 
-	// Load registers a key to be loaded and return a [Future] for waiting for the result.
+	// Load registers a key to be loaded and returns a [Future] for waiting for the result.
 	//
 	// Context can be used to provide a deadline for this method.
-	// Cancel the context may stop the loader from loading the key.
+	// Cancelling the context may stop the loader from loading the key.
 	Load(ctx context.Context, key K) *Future[T]
 
-	// LoadAll registers keys to be loaded and return a [Future] for waiting for the combined result.
+	// LoadAll registers keys to be loaded and returns a [Future] for waiting for the combined result.
 	//
 	// Context can be used to provide a deadline for this method.
-	// Cancel the context may stop the loader from loading the key.
+	// Cancelling the context may stop the loader from loading the key.
 	LoadAll(ctx context.Context, keys []K) map[K]*Future[T]
 
-	// Close stop the loader.
+	// Close stops the loader.
 	// This method may load the left-over batch on the caller thread.
 	// Context can be used to provide a deadline for this method.
 	Close(ctx context.Context) error
 	// Stop the loader.
 	// This method does not load the leftover batch.
 	Stop(ctx context.Context) error
-	// Flush force load the current batch.
+	// Flush forces loading of the current batch.
 	// This method may load the batch on the caller thread.
 	// Context can be used to provide a deadline for this method.
 	Flush(ctx context.Context) error
@@ -65,14 +65,14 @@ type LoadKeys[K any] struct {
 	Ctx  context.Context
 	Keys []K
 
-	// counter is the number of pending load request of this batch before processing.
+	// counter is the number of pending load requests of this batch before processing.
 	counter int64
 	// id is the unique id of this batch.
 	id *byte
 }
 
-// LoadBatchFn function to load a batch of keys.
-// Return a map of keys to values and an error, if both are non-nil, the error will be set for all missing keys.
+// LoadBatchFn is a function to load a batch of keys.
+// Returns a map of keys to values and an error; if both are non-nil, the error will be set for all missing keys.
 // If the result does not contain all keys and the error is nil, the error of missing keys
 // will be set to [ErrLoadMissingResult] or any configured error.
 //
@@ -83,11 +83,11 @@ type LoadBatchFn[K comparable, T any] func(batch LoadKeys[K], count int64) (map[
 // Can be configured by [LoaderSetup.WithMissingResultError].
 var ErrLoadMissingResult = errors.New("empty missing result for key")
 
-// NewLoader create a LoaderSetup using specified functions.
+// NewLoader creates a LoaderSetup using the specified functions.
 // See [LoaderSetup.Configure] and [Option] for available configuration.
 // The result [LoaderSetup] is in the setup state.
 //
-// Call [LoaderSetup.Run] with a handler to create a [Loader] that can load item.
+// Call [LoaderSetup.Run] with a handler to create a [Loader] that can load items.
 // By default, the processor operates with the following configuration:
 //   - WithMaxConcurrency: Unset (unlimited)
 //   - WithMaxItem: 1000 (count keys)
@@ -118,15 +118,15 @@ func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 	return s
 }
 
-// LoaderSetup batch loader that is in setup phase (not running)
-// You cannot load any item using this loader yet, use [LoaderSetup.Run] to create a [Loader] that can load item.
+// LoaderSetup is a batch loader in the setup phase (not running)
+// You cannot load any item using this loader yet; use [LoaderSetup.Run] to create a [Loader] that can load items.
 // See [Option] for available options.
 type LoaderSetup[K comparable, T any] struct {
 	setup              ProcessorSetup[K, LoadKeys[K]]
 	missingResultError error
 }
 
-// Loader [ILoader] that is running and can load item.
+// Loader is an [ILoader] that is running and can load items.
 type Loader[K comparable, T any] struct {
 	processor *Processor[K, LoadKeys[K]]
 
@@ -143,14 +143,14 @@ func (p LoaderSetup[K, T]) Configure(options ...Option) LoaderSetup[K, T] {
 	return p
 }
 
-// WithMissingResultError set the default error for keys that are missing in the result.
+// WithMissingResultError sets the default error for keys that are missing in the result.
 func (p LoaderSetup[K, T]) WithMissingResultError(err error) LoaderSetup[K, T] {
 	p.missingResultError = err
 	return p
 }
 
-// Run create a [Loader] that can accept item.
-// Accept a [LoadBatchFn] and a list of [RunOption] of type [LoadKeys].
+// Run creates a [Loader] that can accept items.
+// Accepts a [LoadBatchFn] and a list of [RunOption] of type [LoadKeys].
 func (p LoaderSetup[K, T]) Run(loadFn LoadBatchFn[K, T], options ...RunOption[LoadKeys[K]]) *Loader[K, T] {
 	loader := Loader[K, T]{
 		loading:            make(map[K]*Future[T]),
@@ -199,18 +199,18 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 	return nil
 }
 
-// Get registers a key to be loaded and wait for it to be loaded.
+// Get registers a key to be loaded and waits for it to be loaded.
 //
 // Context can be used to provide a deadline for this method.
-// Cancel the context may stop the loader from loading the key.
+// Cancelling the context may stop the loader from loading the key.
 func (l *Loader[K, T]) Get(ctx context.Context, key K) (T, error) {
 	return l.Load(ctx, key).Get(ctx)
 }
 
-// Load registers a key to be loaded and return a [Future] for waiting for the result.
+// Load registers a key to be loaded and returns a [Future] for waiting for the result.
 //
 // Context can be used to provide a deadline for this method.
-// Cancel the context may stop the loader from loading the key.
+// Cancelling the context may stop the loader from loading the key.
 func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
 
@@ -236,8 +236,8 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		}
 		l.lock.RUnlock()
 
-		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
-		// is already locked, so no thread will touch the new key.
+		// There is no need to lock here. We already ensure that a batch only contains existing keys,
+		// and this function has already been locked, so no thread will touch the new key.
 		future := &Future[T]{
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
@@ -251,11 +251,11 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	return res
 }
 
-// GetAll registers keys to be loaded and wait for all of them to be loaded.
+// GetAll registers keys to be loaded and waits for all of them to be loaded.
 // Context can be used to provide a deadline for this method.
 //
-// In the case of context timed out, keys that are loaded will be returned along with error.
-// Cancel the context may stop the loader from loading the key.
+// In the case of the context timing out, keys that are loaded will be returned along with an error.
+// Cancelling the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) GetAll(ctx context.Context, keys []K) (map[K]T, error) {
 	futures := l.LoadAll(ctx, keys)
@@ -273,10 +273,10 @@ func (l *Loader[K, T]) GetAll(ctx context.Context, keys []K) (map[K]T, error) {
 	return result, errors.Join(errs...)
 }
 
-// LoadAll registers keys to be loaded and return a [IFuture] for waiting for the combined result.
+// LoadAll registers keys to be loaded and returns an [IFuture] for waiting for the combined result.
 //
 // Context can be used to provide a deadline for this method.
-// Cancel the context may stop the loader from loading the key.
+// Cancelling the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
 func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 	futures := make(map[K]*Future[T], len(keys))
@@ -303,8 +303,8 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 		}
 		l.lock.RUnlock()
 
-		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
-		// is already locked, so no thread will touch the new key.
+		// There is no need to lock here. We already ensure that a batch only contains existing keys, and this function
+		// has already been locked, so no thread will touch the new key.
 		future := &Future[T]{
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
@@ -319,11 +319,11 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 	return futures
 }
 
-// Close stop the loader.
+// Close stops the loader.
 // This method will load the left-over batch on the caller thread.
 //
 // Context can be used to provide a deadline for this method,
-// Context does not affect already in processing batch.
+// Context does not affect a batch that is already being processed.
 func (l *Loader[K, T]) Close(ctx context.Context) error {
 	return l.processor.Close(ctx)
 }
@@ -343,7 +343,7 @@ func (l *Loader[K, T]) Stop(ctx context.Context) error {
 	return err
 }
 
-// Flush force load the current batch.
+// Flush forces loading of the current batch.
 // This method may load the pending batch on the caller thread, depending on concurrent and block settings.
 // Context can be used to provide a deadline for this method.
 func (l *Loader[K, T]) Flush(ctx context.Context) error {
@@ -355,14 +355,14 @@ func (l *Loader[K, T]) Flush(ctx context.Context) error {
 type Future[T any] struct {
 	// ch is used to notify that the future is completed.
 	ch chan struct{}
-	// batch id is used to identify the id of the batch that loading this future.
+	// batchID is used to identify the id of the batch that is loading this future.
 	batchID *byte
 
 	result T
 	err    error
 }
 
-// Get wait until the result is available and return the result.
+// Get waits until the result is available and returns the result.
 // The context can be used to cancel the wait (not the load request).
 func (r *Future[T]) Get(ctx context.Context) (T, error) {
 	if r.ch == nil {
@@ -380,7 +380,7 @@ func (r *Future[T]) Get(ctx context.Context) (T, error) {
 	return r.result, r.err
 }
 
-// IsDone return whether the future is completed.
+// IsDone returns whether the future is completed.
 func (r *Future[T]) IsDone() bool {
 	if r.ch == nil {
 		return true

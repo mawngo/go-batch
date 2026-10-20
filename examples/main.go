@@ -15,25 +15,25 @@ func main() {
 	// Merger will be called to add an item to a batch, here the addToSlice[int] will add the item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
-	// The library already defined some built initializers and mergers for common data types,
+	// The library already defines some built-in initializers and mergers for common data types,
 	// but you can always define your own initializer and merger.
 	//
-	// This equals to: batch.NewSliceProcessor().
+	// This is equivalent to: batch.NewSliceProcessor().
 	setup := batch.NewProcessor(batch.InitSlice[int], addToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached or the max wait is reached.
 		Configure(batch.WithMaxConcurrency(5), batch.WithMaxItem(10), batch.WithMaxWait(30*time.Second))
 
 	// Start the processor by specifying a handler to process the batch, and optionally additional run configuration.
-	// This will create a *batch.Processor that can accept item.
+	// This will create a *batch.Processor that can accept items.
 	processor := setup.Run(summing(&sum))
 
 	ctx := context.Background()
 	for range 1_000_000 {
-		// Add item to the processor.
+		// Add an item to the processor.
 		processor.Put(ctx, 1)
 	}
-	// Remember to close the running processor before your application stopped.
+	// Remember to close the running processor before your application stops.
 	// Closing will force the processor to process the left-over items.
 	// Any item added after closing is not guaranteed to be processed.
 	if err := processor.Close(ctx); err != nil {
@@ -53,8 +53,8 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 	}
 }
 
-// addToSlice is a [batch.MergeToBatchFn] that adds item to the slice.
-// It is recommended to use [batch.NewSliceProcessor], this is just for example.
+// addToSlice is a [batch.MergeToBatchFn] that adds an item to the slice.
+// It is recommended to use [batch.NewSliceProcessor], this is just an example.
 func addToSlice[T any](b []T, item T) []T {
 	return append(b, item)
 }

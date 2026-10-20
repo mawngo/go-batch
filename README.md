@@ -1,13 +1,13 @@
 # Go Batch
 
-batch processing utilities for go projects.
+Batch processing utilities for Go projects.
 
-This library provides a general batch processor that can apply to various use cases like bulk insert to the database,
-bulk enqueue, precompute reports, ...
+This library provides a general batch processor that can apply to various use cases like bulk inserting into a database,
+bulk enqueueing, precomputing reports, ...
 
 ## Installation
 
-Require go 1.25+
+Requires Go 1.25+
 
 ```shell
 go get -u github.com/mawngo/go-batch/v3
@@ -37,11 +37,11 @@ func main() {
 	// here the addToSlice[int] will add the item to the slice.
 	//
 	// A batch can be anything: slice, map, struct, channel, ...
-	// The library already defined some built-in 
+	// The library already defines some built-in 
 	// initializers, mergers and constructors for common data types,
 	// but you can always define your own initializer and merger.
 	//
-	// This equals to: batch.NewSliceProcessor().
+	// This is equivalent to: batch.NewSliceProcessor().
 	setup := batch.NewProcessor(batch.InitSlice[int], addToSlice[int]).
 		// Configure the processor.
 		// The batch will be processed when the max item is reached 
@@ -51,7 +51,7 @@ func main() {
 
 	// Start the processor by specifying a handler to process the batch,
 	// and optionally additional run configuration.
-	// This will create a *batch.Processor that can accept item.
+	// This will create a *batch.Processor that can accept items.
 	processor := setup.Run(summing(&sum))
 
 	ctx := context.Background()
@@ -59,7 +59,7 @@ func main() {
 		// Add item to the processor.
 		processor.Put(ctx, 1)
 	}
-	// Remember to close the running processor before your application stopped.
+	// Remember to close the running processor before your application stops.
 	// Closing will force the processor to process the left-over items.
 	// Any item added after closing is not guaranteed to be processed.
 	if err := processor.Close(ctx); err != nil {
@@ -79,7 +79,7 @@ func summing(p *int32) batch.ProcessBatchFn[[]int] {
 	}
 }
 
-// addToSlice is a [batch.MergeToBatchFn] that adds item to the slice.
+// addToSlice is a [batch.MergeToBatchFn] that adds an item to the slice.
 // It is recommended to use [batch.NewSliceProcessor], this is just for example.
 func addToSlice[T any](b []T, item T) []T {
 	return append(b, item)
@@ -87,15 +87,15 @@ func addToSlice[T any](b []T, item T) []T {
 
 ```
 
-There are also built-in shortcuts for common processor `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
+There are also built-in shortcuts for common processors `NewSliceProcessor`, `NewMapProcessor`, `NewSelfMapProcessor`.
 For simple use cases, you can use those shortcuts to avoid boilerplate code; also, those functions are unlikely to be
-changed in the future major version.
+changed in a future major version.
 
 More usage can be found in [test](batch_test.go) and [examples](examples)
 
 ### Cancellation
 
-Cancelling the `context` only affects the item waiting to be added to the processor
+Cancelling the `context` only affects items waiting to be added to the processor
 (for example, when the waiting batch is full and all batch processing threads are busy).
 Items that are already added to the processor will still be processed.
 
@@ -107,13 +107,13 @@ If you do not want to use `context`, use [version 2 of this library](https://git
 ### Waiting for an item to be processed
 
 The processor does not provide a method to wait for or get the result of processing an item; 
-however, you can use the `batch.IFuture[T]` with custom batch to implement your own waiting logic.
+however, you can use the `batch.IFuture[T]` with a custom batch to implement your own waiting logic.
 
 See [future example](examples/future/main.go) or [loader implementation](loader.go).
 
 ## Loader
 
-Provide batch loading like Facebook's DataLoader.
+Provides batch loading like Facebook's DataLoader.
 
 ```go
 package main
@@ -128,15 +128,16 @@ import (
 
 func main() {
 	loadedCount := int32(0)
-	// First create a batch.LoaderSetup
+	// First, create a batch.LoaderSetup
 	loader := batch.NewLoader[int, string]().
 		// Configure the loader.
-		// All pending load requests will be processed when one of the following limits is reached.
+		// All pending load requests will be processed when one of the following 
+		// limits is reached.
 		Configure(batch.WithMaxItem(100), batch.WithMaxWait(1*time.Second)).
 		// Like when using the processor,
 		// start the loader by providing a LoadBatchFn,
 		// and optionally additional run configuration.
-		// This will create a *batch.Loader that can accept item.
+		// This will create a *batch.Loader that can accept items.
 		Run(load(&loadedCount))
 
 	ctx := context.Background()
@@ -144,7 +145,7 @@ func main() {
 		k := i % 10
 		go func() {
 			// Use the loader.
-			// Alternately, you can use the Load method
+			// Alternatively, you can use the Load method
 			// future := loader.Load(k)
 			// ...
 			// v, err := future.Get()
@@ -158,15 +159,15 @@ func main() {
 			}
 		}()
 	}
-	// Remember to close the running load before your application stopped.
-	// Closing will force the loader to load the left-over request,
-	// any load request after the loader is closed is not a guarantee to be processed
+	// Remember to close the running loader before your application stops.
+	// Closing will force the loader to load the left-over requests,
+	// any load request after the loader is closed is not guaranteed to be processed
 	// and may block forever.
 	if err := loader.Close(ctx); err != nil {
 		panic(err)
 	}
-	// If you do not want to load left over requests, then use StopContext instead.
-	// if err := loader.StopContext(context.Background()); err != nil {
+	// If you do not want to load leftover requests, then use Stop instead.
+	// if err := loader.Stop(context.Background()); err != nil {
 	//     panic(err)
 	// }
 	if loadedCount > 1 {
@@ -193,24 +194,24 @@ func load(p *int32) batch.LoadBatchFn[int, string] {
 }
 ```
 
-The `batch.Loader` use `batch.Processor` for handling batching, so they share the same configuration and options.
+The `batch.Loader` uses `batch.Processor` for handling batching, so they share the same configuration and options.
 
 However, the default configuration of the Loader is different:
 
 - Default max item is `1000`
 - Default wait time is `16ms`
 - Default concurrency is unlimited `Unset`
-- It counts the number of pending load requests only in the current batch, so that requests are being loaded will not be
+- It counts the number of pending load requests only in the current batch, so that requests being loaded will not be
   counted.
 
 ### Caching
 
 This library does not provide caching.
-You can implement caching by simply checking the cache before `Load` and add item
+You can implement caching by simply checking the cache before `Load` and adding the item
 to the cache in the `LoadBatchFn`
 
-All `Load` request before and during loading of the same key will share the same `Future`.
-Multiple `LoadBatchFn` can be run concurrently, but they will never share the same keys sets.
+All `Load` requests before and during loading of the same key will share the same `Future`.
+Multiple `LoadBatchFn` can be run concurrently, but they will never share the same key sets.
 
 See [loader cache example](examples/loadercache/main.go).
 

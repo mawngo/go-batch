@@ -14,7 +14,7 @@ import (
 
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
-		// This test will leak as the processor is forced to close before tasks completed, which was an expected behavior.
+		// This test will leak as the processor is forced to close before the tasks complete, which is expected behavior.
 		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v3.TestCloseCancelContext.func1"),
 		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v3.TestClusterCloseContext.func2"),
 	)

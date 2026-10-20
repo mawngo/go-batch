@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Unset is a special value for various [Option] functions, usually meaning unrestricted, unlimited, or disable.
+// Unset is a special value for various [Option] functions, usually meaning unrestricted, unlimited, or disabled.
 // You need to read the doc of the corresponding function to know what this value does.
 const Unset = -1
 
@@ -30,11 +30,11 @@ type size interface {
 	~int | ~int32 | ~int64
 }
 
-// WithMaxWait set the max waiting time before the processor will handle the batch anyway.
+// WithMaxWait sets the max waiting time before the processor will handle the batch anyway.
 // If the batch is empty, then it is skipped.
 // The max wait starts counting from the last processed time, not a fixed period.
-// Accept 0 (no wait), -1 [Unset] (wait util maxItems reached), or [time.Duration].
-// If set to -1 [Unset] and the maxItems is unlimited,
+// Accept 0 (no wait), -1 [Unset] (wait until maxItem is reached), or [time.Duration].
+// If set to -1 [Unset] and maxItem is unlimited,
 // then the processor will keep processing whenever possible without waiting for anything.
 //
 // The default value is 0 (no wait).
@@ -45,7 +45,7 @@ func WithMaxWait(wait time.Duration) Option {
 	}
 }
 
-// WithHardMaxWait set the max waiting time before the processor will handle the batch anyway.
+// WithHardMaxWait sets the max waiting time before the processor will handle the batch anyway.
 // Unlike [WithMaxWait], the batch will be processed even if it is empty,
 // which is preferable if the processor must perform some periodic tasks.
 // You should ONLY configure [WithMaxWait] OR [WithHardMaxWait], NOT BOTH.
@@ -58,10 +58,10 @@ func WithHardMaxWait(wait time.Duration) Option {
 	}
 }
 
-// WithAggressiveMode enable the aggressive mode.
-// In this mode, the processor does not wait for the maxWait or maxItems reached, will continue processing item and only merge into
-// batch if needed (for example, reached concurrentLimit, or dispatcher thread is busy).
-// The maxItems configured by [WithMaxItem] still control the maximum number of items the processor can hold before blocking.
+// WithAggressiveMode enables the aggressive mode.
+// In this mode, the processor does not wait for maxWait or maxItem to be reached; it continues processing items and only merges into a
+// batch if needed (for example, when the concurrentLimit is reached or the dispatcher thread is busy).
+// The maxItem configured by [WithMaxItem] still controls the maximum number of items the processor can hold before blocking.
 // The [WithBlockWhileProcessing] will be ignored in this mode.
 //
 // This mode can also be enabled by setting maxWait to 0 (no wait) and maxItems to -1 [Unset],
@@ -72,7 +72,7 @@ func WithAggressiveMode() Option {
 	}
 }
 
-// WithBlockWhileProcessing enable the processor block when processing an item.
+// WithBlockWhileProcessing enables the processor to block when processing an item.
 // If concurrency is enabled, the processor only blocks when reached max concurrency.
 // This method has no effect if the processor is in aggressive mode (see [WithAggressiveMode]).
 func WithBlockWhileProcessing() Option {
@@ -81,15 +81,15 @@ func WithBlockWhileProcessing() Option {
 	}
 }
 
-// WithDisabledDefaultProcessErrorLog disable default error logging when a batch processing error occurs.
+// WithDisabledDefaultProcessErrorLog disables default error logging when a batch processing error occurs.
 func WithDisabledDefaultProcessErrorLog() Option {
 	return func(p *processorConfig) {
 		p.isDisableErrorLogging = true
 	}
 }
 
-// WithMaxItem set the max number of items this processor can hold before blocking.
-// Support fixed number and -1 [Unset] (unlimited)
+// WithMaxItem sets the max number of items this processor can hold before blocking.
+// Supports a fixed number and -1 [Unset] (unlimited)
 // When set to unlimited, it will never block, and the batch handling behavior depends on [WithMaxWait].
 // When set to 0, the processor will be DISABLED and items will be processed directly on the caller thread without batching.
 //
@@ -100,9 +100,9 @@ func WithMaxItem[I size](maxItem I) Option {
 	}
 }
 
-// WithMaxConcurrency set the max number of go routines this processor can create when processing item.
-// Support 0 (run on dispatcher goroutine) and fixed number.
-// Passing -1 [Unset] (unlimited) to this function has the same effect of passing [math.MaxInt64].
+// WithMaxConcurrency sets the max number of goroutines this processor can create when processing an item.
+// Supports 0 (run on the dispatcher goroutine) and a fixed number.
+// Passing -1 [Unset] (unlimited) to this function has the same effect as passing [math.MaxInt64].
 //
 // The default value is 0 (run on dispatcher goroutine).
 func WithMaxConcurrency[I size](concurrency I) Option {
@@ -130,14 +130,14 @@ type runConfig[B any] struct {
 // RunOption options for batch processing.
 type RunOption[B any] func(*runConfig[B])
 
-// WithBatchCounter provide an alternate function to count the number of items in batch.
+// WithBatchCounter provides an alternate function to count the number of items in a batch.
 func WithBatchCounter[B any](countFn CountBatchFn[B]) RunOption[B] {
 	return func(c *runConfig[B]) {
 		c.countFn = countFn
 	}
 }
 
-// WithBatchCountMapKeys provide [WithBatchCounter] with counter that count the number of keys in the map.
+// WithBatchCountMapKeys provides [WithBatchCounter] with a counter that counts the number of keys in the map.
 // The batch must be a map of type map[K]V.
 func WithBatchCountMapKeys[K comparable, V any]() RunOption[map[K]V] {
 	return func(c *runConfig[map[K]V]) {
@@ -147,7 +147,7 @@ func WithBatchCountMapKeys[K comparable, V any]() RunOption[map[K]V] {
 	}
 }
 
-// WithLoaderCountKeys provide [WithBatchCounter] with counter that count the number of keys of the [Loader].
+// WithLoaderCountKeys provides [WithBatchCounter] with a counter that counts the number of keys of the [Loader].
 //
 // This option should only be used for [Loader]
 // The batch must be LoadKeys[K].
@@ -159,8 +159,8 @@ func WithLoaderCountKeys[K any]() RunOption[LoadKeys[K]] {
 	}
 }
 
-// WithBatchSplitter provide [SplitBatchFn] to split the batch into multiple smaller batch.
-// When concurrency > 0 and [SplitBatchFn] are set,
+// WithBatchSplitter provides [SplitBatchFn] to split the batch into multiple smaller batches.
+// When concurrency > 0 and a [SplitBatchFn] is set,
 // the processor will split the batch and process across multiple threads,
 // otherwise the batch will be processed on a single thread and block when concurrency is reached.
 // This configuration may be beneficial if you have a very large batch that can be split into smaller batches and processed in parallel.
@@ -170,8 +170,8 @@ func WithBatchSplitter[B any](split SplitBatchFn[B]) RunOption[B] {
 	}
 }
 
-// WithBatchSplitSliceEqually provide [WithBatchSplitter] with a [SplitBatchFn] that
-// split the batch into multiple equal chunk.
+// WithBatchSplitSliceEqually provides [WithBatchSplitter] with a [SplitBatchFn] that
+// splits the batch into multiple equal chunks.
 // The batch must be a slice of type T.
 func WithBatchSplitSliceEqually[T any, I size](numberOfChunk I) RunOption[[]T] {
 	return func(c *runConfig[[]T]) {
@@ -190,8 +190,8 @@ func WithBatchSplitSliceEqually[T any, I size](numberOfChunk I) RunOption[[]T] {
 	}
 }
 
-// WithBatchSplitSliceSizeLimit provide [WithBatchSplitter] with a [SplitBatchFn] that
-// split the batch into multiple chuck of limited size.
+// WithBatchSplitSliceSizeLimit provides [WithBatchSplitter] with a [SplitBatchFn] that
+// splits the batch into multiple chunks of limited size.
 // The batch must be a slice of type T.
 func WithBatchSplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) RunOption[[]T] {
 	return func(c *runConfig[[]T]) {
@@ -218,7 +218,7 @@ func WithBatchSplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) RunOption[[]T
 	}
 }
 
-// WithBatchErrorHandlers provide a [RecoverBatchFn] chain to process on error.
+// WithBatchErrorHandlers provides a [RecoverBatchFn] chain to process on error.
 // Each RecoverBatchFn can further return an error to enable the next RecoverBatchFn in the chain.
 // The RecoverBatchFn must never panic.
 func WithBatchErrorHandlers[B any](handlers ...RecoverBatchFn[B]) RunOption[B] {

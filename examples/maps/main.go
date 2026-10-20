@@ -24,7 +24,7 @@ func main() {
 	if err := processor.Close(ctx); err != nil {
 		panic(err)
 	}
-	// batch size is 10 so total batch is 100_000.
+	// Batch size is 10, so the total number of batches is 100_000.
 	if count[0] != 100_000 {
 		panic("count is not 100_000")
 	}

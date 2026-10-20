@@ -12,7 +12,6 @@ func main() {
 	cache := myCache{
 		data: make(map[int]string),
 	}
-	// First create a batch.LoaderSetup
 	loader := batch.NewLoader[int, string]().
 		Run(func(batch batch.LoadKeys[int], _ int64) (map[int]string, error) {
 			// Simulate getting the value from somewhere.
@@ -24,7 +23,7 @@ func main() {
 			return res, nil
 		})
 
-	// Example use the cache.
+	// Example of using the cache.
 	go func() {
 		if v, ok := cache.Get(1); ok {
 			println(v + " cached")

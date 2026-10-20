@@ -11,7 +11,7 @@ type KeyVal[K any, V any] struct {
 }
 
 // InitBatchFn function to create an empty batch.
-// Accept max item limit can be 1 (disabled), -1 (unlimited) or any positive number.
+// Accept a max item limit that can be 1 (disabled), -1 (unlimited) or any positive number.
 // The InitBatchFn must never panic.
 type InitBatchFn[B any] func(int64) B
 
@@ -50,12 +50,12 @@ func LoggingErrorHandler[B any](_ B, count int64, err error) error {
 	return err
 }
 
-// NewSliceProcessor prepare a processor that backed by a slice.
+// NewSliceProcessor prepares a processor backed by a slice.
 func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
 	return NewProcessor(InitSlice[T], addToSlice[T])
 }
 
-// InitSlice is [InitBatchFn] that allocate a slice.
+// InitSlice is an [InitBatchFn] that allocates a slice.
 // It is recommended to use [NewSliceProcessor] instead if possible.
 func InitSlice[T any](i int64) []T {
 	if i < 0 {
@@ -67,26 +67,26 @@ func InitSlice[T any](i int64) []T {
 	return make([]T, 0, i)
 }
 
-// addToSlice is [MergeToBatchFn] that add item to a slice.
+// addToSlice is a [MergeToBatchFn] that adds an item to a slice.
 func addToSlice[T any](b []T, item T) []T {
 	return append(b, item)
 }
 
-// NewMapProcessor prepare a processor that backed by a map.
+// NewMapProcessor prepares a processor backed by a map.
 // If [CombineFn] is nil, the duplicated key will be replaced.
 func NewMapProcessor[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) ProcessorSetup[T, map[K]V] {
 	return NewProcessor(InitMap[K, V], addToMapUsing(extractor, combiner))
 }
 
-// NewSelfMapProcessor prepare a processor that backed by a map, using item as value without extracting.
+// NewSelfMapProcessor prepares a processor backed by a map, using the item as the value without extracting.
 // If [CombineFn] is nil, the duplicated key will be replaced.
 func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) ProcessorSetup[T, map[K]T] {
 	return NewProcessor(InitMap[K, T], addSelfToMapUsing(keyExtractor, combiner))
 }
 
-// InitMap is [InitBatchFn] that allocate a map.
-// It uses the default size for the map, as the size of items may be much larger than the size of the map after merged.
-// However, if you properly configured [WithBatchCounter] to count the size of the map
+// InitMap is an [InitBatchFn] that allocates a map.
+// It uses the default size for the map, as the size of the items may be much larger than the size of the map after being merged.
+// However, if you properly configure [WithBatchCounter] to count the size of the map
 // and [WithMaxItem] to a reasonable value,
 // you may benefit from specifying the size of the map using your own [InitBatchFn].
 // It is recommended to use [NewMapProcessor] instead if possible.
@@ -97,14 +97,14 @@ func InitMap[K comparable, V any](i int64) map[K]V {
 	return make(map[K]V)
 }
 
-// ExtractFn is a function to extract value from item.
+// ExtractFn is a function to extract a value from an item.
 type ExtractFn[T any, V any] func(T) V
 
-// CombineFn is a function to combine two values in to one.
+// CombineFn is a function to combine two values into one.
 type CombineFn[T any] func(T, T) T
 
-// addToMapUsing create [MergeToBatchFn]
-// that add item to the map using [KeyVal] [ExtractFn] and apply [CombineFn] if key duplicated.
+// addToMapUsing creates a [MergeToBatchFn]
+// that adds an item to the map using the [KeyVal] [ExtractFn] and applies [CombineFn] if a key is duplicated.
 // The original value will be passed as the 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, any duplicated key will be replaced.
 func addToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, V]], combiner CombineFn[V]) MergeToBatchFn[map[K]V, T] {
@@ -127,8 +127,8 @@ func addToMapUsing[T any, K comparable, V any](extractor ExtractFn[T, KeyVal[K, 
 	}
 }
 
-// addSelfToMapUsing create a [MergeToBatchFn] that add self as item to map using key [ExtractFn]
-// and apply [CombineFn] if key duplicated.
+// addSelfToMapUsing creates a [MergeToBatchFn] that adds the item itself to a map using the key [ExtractFn]
+// and applies [CombineFn] if a key is duplicated.
 // The original value will be passed as the 1st parameter to the [CombineFn].
 // If [CombineFn] is nil, any duplicated key will be replaced.
 func addSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combiner CombineFn[T]) MergeToBatchFn[map[K]T, T] {
@@ -151,7 +151,7 @@ func addSelfToMapUsing[T any, K comparable](keyExtractor ExtractFn[T, K], combin
 	}
 }
 
-// InitType is an [InitBatchFn] that allocate a type T.
+// InitType is an [InitBatchFn] that allocates a value of type T.
 func InitType[T any](_ int64) T {
 	t := new(T)
 	return *t
