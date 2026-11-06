@@ -223,7 +223,7 @@ The last context provided to `Load` or `LoadAll` before the batch load is starte
 
 ## Caveats
 
-See [PROBLEM.md](PROBLEM.md) for a list of unresolved bugs.
+See [PROBLEM.md](PROBLEM.md) for a list of unresolved bugs. The bug list is provided by AI.
 
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).

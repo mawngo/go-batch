@@ -358,6 +358,8 @@ type Future[T any] struct {
 // Get waits until the result is available and returns the result.
 // The context can be used to cancel the wait (not the load request).
 func (r *Future[T]) Get(ctx context.Context) (T, error) {
+	// Even when the ch is written under a lock but read lock-free, the nil check here will not cause a race condition bug.
+	// The ch is either nil or closed, in both cases, the outcome is the same.
 	if r.ch == nil {
 		return r.result, r.err
 	}
@@ -366,8 +368,9 @@ func (r *Future[T]) Get(ctx context.Context) (T, error) {
 	case <-r.ch:
 		// Don't care, the result is already set.
 	case <-ctx.Done():
+		var empty T
 		// Return the context error.
-		return r.result, ctx.Err()
+		return empty, ctx.Err()
 	}
 
 	return r.result, r.err
