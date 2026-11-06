@@ -215,14 +215,7 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
 
 	l.processor.Merge(ctx, key, func(batch LoadKeys[K], _ K) LoadKeys[K] {
-		if ctx.Err() == nil {
-			batch.Ctx = ctx
-		} else {
-			res = &Future[T]{
-				err: ctx.Err(),
-			}
-			return batch
-		}
+		batch.Ctx = ctx
 
 		// Check if the key is already in the batch.
 		l.lock.RLock()
@@ -289,14 +282,7 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 	futures := make(map[K]*Future[T], len(keys))
 
 	l.processor.MergeAll(ctx, keys, func(batch LoadKeys[K], key K) LoadKeys[K] {
-		if ctx.Err() == nil {
-			batch.Ctx = ctx
-		} else {
-			futures[key] = &Future[T]{
-				err: ctx.Err(),
-			}
-			return batch
-		}
+		batch.Ctx = ctx
 
 		// Check if the key is already in the batch.
 		l.lock.RLock()
