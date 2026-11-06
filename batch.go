@@ -313,7 +313,7 @@ func (p *Processor[T, B]) waitUntilFullDispatch() {
 
 // IsDisabled returns whether the processor is disabled.
 // A disabled processor won't do batching; instead, the process will be executed on the caller.
-// All other settings are ignored when the processor is disabled.
+// All other settings are ignored when the processor is disabled, including the custom counter.
 func (p *Processor[T, B]) IsDisabled() bool {
 	return p.maxItem == 0
 }
@@ -392,11 +392,12 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 		return 0
 	}
 	if p.IsDisabled() {
-		batch := p.initFn(int64(len(items)))
+		count := int64(len(items))
+		batch := p.initFn(count)
 		for i := range items {
 			batch = merge(batch, items[i])
 		}
-		p.doProcess(batch, 1)
+		p.doProcess(batch, count)
 		return len(items)
 	}
 
