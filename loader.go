@@ -133,7 +133,7 @@ type Loader[K comparable, T any] struct {
 	loadFn             LoadBatchFn[K, T]
 	missingResultError error
 
-	lock    sync.RWMutex
+	lock    sync.Mutex
 	loading map[K]*Future[T]
 }
 
@@ -218,26 +218,24 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		batch.Ctx = ctx
 
 		// Check if the key is already in the batch.
-		l.lock.RLock()
+		l.lock.Lock()
 		if future, ok := l.loading[key]; ok {
-			l.lock.RUnlock()
+			l.lock.Unlock()
 			res = future
 			if future.batchID == batch.id {
 				batch.counter++
 			}
 			return batch
 		}
-		l.lock.RUnlock()
 
-		// There is no need to lock here. We already ensure that a batch only contains existing keys,
-		// and this function has already been locked, so no thread will touch the new key.
 		future := &Future[T]{
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
 		}
+		l.loading[key] = future
+		l.lock.Unlock()
 		batch.Keys = append(batch.Keys, key)
 		batch.counter++
-		l.loading[key] = future
 		res = future
 		return batch
 	})
@@ -285,26 +283,24 @@ func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 		batch.Ctx = ctx
 
 		// Check if the key is already in the batch.
-		l.lock.RLock()
+		l.lock.Lock()
 		if future, ok := l.loading[key]; ok {
-			l.lock.RUnlock()
+			l.lock.Unlock()
 			futures[key] = future
 			if future.batchID == batch.id {
 				batch.counter++
 			}
 			return batch
 		}
-		l.lock.RUnlock()
 
-		// There is no need to lock here. We already ensure that a batch only contains existing keys, and this function
-		// has already been locked, so no thread will touch the new key.
 		future := &Future[T]{
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
 		}
+		l.loading[key] = future
+		l.lock.Unlock()
 		batch.Keys = append(batch.Keys, key)
 		batch.counter++
-		l.loading[key] = future
 		futures[key] = future
 		return batch
 	})
