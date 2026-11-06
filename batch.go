@@ -51,7 +51,7 @@ type IProcessor[T any, B any] interface {
 	// Stop the processor.
 	// This method does not process leftover batch.
 	Stop(ctx context.Context) error
-	// Drain forces processing of the batch until the batch is empty.
+	// Drain forces processing batches until the batch is empty.
 	// This method may process the batch on the caller thread.
 	// Context can be used to provide a deadline for this method.
 	Drain(ctx context.Context) error
@@ -187,7 +187,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 
 // continuousDispatch creates a dispatcher routine that,
 // when the batch is empty, waits until it is not empty,
-// else process the remaining batch until it became empty.
+// otherwise processes the remaining batch until it becomes empty.
 func (p *Processor[T, B]) continuousDispatch() {
 	if p.notEmpty == nil {
 		// Should never happen.
@@ -208,12 +208,12 @@ func (p *Processor[T, B]) continuousDispatch() {
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
 						case <-p.full:
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
-						case <-p.closed:
+						case p.closed <- struct{}{}:
 							return
 						}
 					case <-p.full:
 						p.doProcessAndRelease(p.isBlockWhileProcessing)
-					case <-p.closed:
+					case p.closed <- struct{}{}:
 						return
 					}
 					break
@@ -221,7 +221,7 @@ func (p *Processor[T, B]) continuousDispatch() {
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -230,7 +230,7 @@ func (p *Processor[T, B]) continuousDispatch() {
 
 // waitUntilFullContinuousDispatch creates a dispatcher routine that,
 // when the batch is empty, waits until it is full,
-// else process the remaining batch until it became empty.
+// otherwise processes the remaining batch until it becomes empty.
 // maxItem must be specified by [WithMaxItem].
 func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 	go func() {
@@ -247,12 +247,12 @@ func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case <-p.closed:
+				case p.closed <- struct{}{}:
 					return
 				}
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -270,7 +270,7 @@ func (p *Processor[T, B]) timedDispatch() {
 				select {
 				case p.blocked <- struct{}{}:
 					// if empty, then reset the timer.
-					// this prevents the first item from being processed immediately after a long wait.
+					// this avoids the first item to be processed immediately after a long wait.
 					if p.counter == 0 && !p.isHardMaxWait {
 						<-p.blocked
 						break
@@ -278,7 +278,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case <-p.closed:
+				case p.closed <- struct{}{}:
 					return
 				}
 			case <-p.full:
@@ -286,7 +286,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					<-timer.C
 				}
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				if !timer.Stop() {
 					<-timer.C
 				}
@@ -304,7 +304,7 @@ func (p *Processor[T, B]) waitUntilFullDispatch() {
 			select {
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -462,7 +462,7 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 // Close stops the processor.
 // This method will process the leftover batch on the caller thread.
 //
-// Context can be used to provide a deadline for this method,
+// Context can be used to provide a deadline for this method.
 // Context does not affect a batch already being processed.
 func (p *Processor[T, B]) Close(ctx context.Context) error {
 	if p.IsDisabled() {
@@ -476,19 +476,26 @@ func (p *Processor[T, B]) Close(ctx context.Context) error {
 		defer cancel()
 	}
 
-	p.closed <- struct{}{}
-	slog.Debug("waiting for leftover batch to finish")
-	if err := p.Drain(ctx); err != nil {
-		return err
-	}
-	if p.concurrentLimiter != nil {
-		slog.Debug("waiting for concurrent workers to finish")
-		err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit)
-		if err != nil {
-			slog.Error("error waiting for concurrent workers to finish", slog.Any("err", err))
+	select {
+	case _, cleanup := <-p.closed:
+		if cleanup {
+			close(p.closed)
+		}
+		slog.Debug("waiting for leftover batch to finish")
+		if err := p.Drain(ctx); err != nil {
 			return err
 		}
-		p.concurrentLimiter.Release(p.concurrentLimit)
+		if cleanup {
+			if p.concurrentLimiter != nil {
+				slog.Debug("waiting for concurrent workers to finish")
+				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
+					return err
+				}
+				p.concurrentLimiter.Release(p.concurrentLimit)
+			}
+		}
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	return nil
 }
@@ -499,15 +506,20 @@ func (p *Processor[T, B]) Stop(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
-	p.closed <- struct{}{}
-	if p.concurrentLimiter != nil {
-		slog.Debug("waiting for concurrent workers to finish")
-		err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit)
-		if err != nil {
-			slog.Error("error waiting for concurrent workers to finish", slog.Any("err", err))
-			return err
+	select {
+	case _, cleanup := <-p.closed:
+		if cleanup {
+			close(p.closed)
+			if p.concurrentLimiter != nil {
+				slog.Debug("waiting for concurrent workers to finish")
+				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
+					return err
+				}
+				p.concurrentLimiter.Release(p.concurrentLimit)
+			}
 		}
-		p.concurrentLimiter.Release(p.concurrentLimit)
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	return nil
 }
