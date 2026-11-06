@@ -11,6 +11,8 @@ import (
 )
 
 func TestBatchedLoad(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	testLoad := func(t *testing.T, loader ILoader[int, int], touched *int32) {
 		ctx := context.Background()
 		loadings := make([]*Future[int], 0, 55_000)
@@ -108,6 +110,8 @@ func TestBatchedLoad(t *testing.T) {
 }
 
 func TestBatchedLoadCancel(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(100), WithMaxWait(Unset)).
 		Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
@@ -146,6 +150,8 @@ func TestBatchedLoadCancel(t *testing.T) {
 }
 
 func TestBatchedLoadReuse(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(100), WithMaxWait(Unset)).
@@ -211,6 +217,8 @@ func TestBatchedLoadReuse(t *testing.T) {
 }
 
 func TestBatchedLoadDisabled(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(0), WithMaxWait(Unset)).
@@ -251,6 +259,8 @@ func TestBatchedLoadDisabled(t *testing.T) {
 }
 
 func TestStopContext(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	touched := int32(0)
 	loader := NewLoader[int, int]().
 		Configure(WithMaxItem(10), WithMaxWait(Unset)).

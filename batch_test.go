@@ -12,19 +12,20 @@ import (
 	"time"
 )
 
-func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m,
-		// This test will leak as the processor is forced to close before the tasks complete, which is expected behavior.
-		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v3.TestCloseCancelContext.func1"),
-		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v3.TestClusterCloseContext.func2"),
-	)
-}
-
 func new1x10Slice() []int {
 	return []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 }
 
+func VerifyNoGoroutineLeak(t *testing.T, options ...goleak.Option) {
+	t.Helper()
+	goleak.VerifyNone(t, append([]goleak.Option{
+		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v3.TestCloseCancelContext.func1"),
+	}, options...)...)
+}
+
 func TestBatched(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	t.Run("Batched Default", func(t *testing.T) {
 		sum := int32(0)
 		processor := NewSliceProcessor[int]().
@@ -138,6 +139,7 @@ func runSumPutTest(t *testing.T, processor IProcessor[int, []int], sum *int32) {
 }
 
 func TestBatchedMultiGoroutine(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
 	sum := int32(0)
 	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(10)).
@@ -165,6 +167,8 @@ func TestBatchedMultiGoroutine(t *testing.T) {
 }
 
 func TestBatchedSplit(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	maxes := []int{1, 2, 5, 8, 10, 18, 20, 111}
 	for _, m := range maxes {
 		sum := int32(0)
@@ -189,6 +193,8 @@ func TestBatchedSplit(t *testing.T) {
 }
 
 func TestCloseCancelContext(t *testing.T) {
+	// No goleak here because cancel the context before the processing is complete
+	// will not stop all processing goroutine.
 	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(5), WithMaxConcurrency(Unset)).
 		Run(func(_ []int, _ int64) error {
@@ -208,6 +214,8 @@ func TestCloseCancelContext(t *testing.T) {
 }
 
 func TestDrain(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	sum := int32(0)
 	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
@@ -234,6 +242,8 @@ func TestDrain(t *testing.T) {
 }
 
 func TestFlush(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	sum := int32(0)
 	processor := NewSliceProcessor[int]().
 		Configure(WithMaxItem(11), WithBlockWhileProcessing(), WithMaxWait(Unset)).
@@ -260,6 +270,8 @@ func TestFlush(t *testing.T) {
 }
 
 func TestBatchedWait(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	t.Run("Wait", func(t *testing.T) {
 		sum := int32(0)
 		processor := NewSliceProcessor[int]().
@@ -332,13 +344,15 @@ func summing(p *int32) ProcessBatchFn[[]int] {
 }
 
 func TestErrorHandling(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	t.Run("BasicError", func(t *testing.T) {
 		sum := int32(0)
 		errCnt := int32(0)
 		processor := NewSliceProcessor[int]().
 			Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 			Run(summingErr(&sum), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
-				slog.Info("receive error of", slog.Any("ints", ints))
+				slog.Debug("receive error of", slog.Any("ints", ints))
 				atomic.AddInt32(&errCnt, int32(i))
 				return nil
 			}))
@@ -361,12 +375,12 @@ func TestErrorHandling(t *testing.T) {
 			Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 			Run(summingErr(&sum), WithBatchErrorHandlers(
 				func(ints []int, i int64, _ error) error {
-					slog.Info("receive error of", slog.Any("ints", ints))
+					slog.Debug("receive error of", slog.Any("ints", ints))
 					atomic.AddInt32(&errCnt, int32(i))
 					return errors.New("continue")
 				},
 				func(ints []int, count int64, _ error) error {
-					slog.Info("receive error of", slog.Any("ints", ints))
+					slog.Debug("receive error of", slog.Any("ints", ints))
 					for i := range count {
 						atomic.AddInt32(&errCnt, int32(ints[i]))
 					}
@@ -517,6 +531,8 @@ func summingErr(p *int32) ProcessBatchFn[[]int] {
 }
 
 func TestCancelContext(t *testing.T) {
+	defer VerifyNoGoroutineLeak(t)
+
 	t.Run("Put", func(t *testing.T) {
 		sum := int32(0)
 		processor := NewSliceProcessor[int]().
@@ -589,8 +605,9 @@ func TestCancelContext(t *testing.T) {
 }
 
 func TestCustomCounter(t *testing.T) {
-	touched := int32(0)
+	defer VerifyNoGoroutineLeak(t)
 
+	touched := int32(0)
 	processor := NewSelfMapProcessor[int, int](func(i int) int {
 		return i
 	}, nil).
