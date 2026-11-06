@@ -180,10 +180,21 @@ func WithBatchSplitSliceEqually[T any, I size](numberOfChunk I) RunOption[[]T] {
 		}
 
 		c.splitFn = func(b []T, _ int64) [][]T {
+			n := int64(len(b))
+			chunks := int64(numberOfChunk)
+			base := n / chunks
+			rem := n % chunks
 			batches := make([][]T, numberOfChunk)
-			for i := range len(b) {
-				bucket := int64(i) % int64(numberOfChunk)
-				batches[bucket] = append(batches[bucket], b[i])
+			start := int64(0)
+
+			for c := range chunks {
+				size := base
+				if c < rem {
+					size++
+				}
+				end := start + size
+				batches[c] = b[start:end]
+				start = end
 			}
 			return batches
 		}
@@ -199,19 +210,13 @@ func WithBatchSplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) RunOption[[]T
 			return
 		}
 
-		c.splitFn = func(b []T, i int64) [][]T {
-			size := i / int64(maxSizeOfChunk)
-			if i%int64(maxSizeOfChunk) != 0 {
-				size++
-			}
-			batches := make([][]T, size)
-			index := 0
-			for batchI := range len(batches) {
-				batch := batches[batchI]
-				for ; index < len(b); index++ {
-					batch = append(batch, b[index])
-				}
-				batches[batchI] = batch
+		c.splitFn = func(b []T, _ int64) [][]T {
+			n := int64(len(b))
+			chunks := (n + int64(maxSizeOfChunk) - 1) / int64(maxSizeOfChunk)
+			batches := make([][]T, 0, chunks)
+			for start := int64(0); start < n; start += int64(maxSizeOfChunk) {
+				end := min(start+int64(maxSizeOfChunk), n)
+				batches = append(batches, b[start:end])
 			}
 			return batches
 		}
