@@ -550,10 +550,7 @@ func (p *Processor[T, B]) Drain(ctx context.Context) error {
 			<-p.blocked
 			p.doProcessConcurrency(batch, counter)
 		case <-ctx.Done():
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			return context.DeadlineExceeded
+			return ctx.Err()
 		}
 	}
 	return nil
@@ -576,10 +573,7 @@ func (p *Processor[T, B]) Flush(ctx context.Context) error {
 		}
 		p.doProcessAndRelease(p.isBlockWhileProcessing)
 	case <-ctx.Done():
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return context.DeadlineExceeded
+		return ctx.Err()
 	}
 	return nil
 }
