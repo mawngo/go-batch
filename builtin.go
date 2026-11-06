@@ -21,6 +21,7 @@ type MergeToBatchFn[B any, T any] func(B, T) B
 
 // SplitBatchFn function to split a batch into multiple smaller batches.
 // Accept the current batch and the input count.
+// After split, the ProcessBatchFn will receive the new batch but with the original counter.
 // The SplitBatchFn must never panic.
 type SplitBatchFn[B any] func(B, int64) []B
 
