@@ -59,11 +59,8 @@ func NewSliceProcessor[T any]() ProcessorSetup[T, []T] {
 // InitSlice is an [InitBatchFn] that allocates a slice.
 // It is recommended to use [NewSliceProcessor] instead if possible.
 func InitSlice[T any](i int64) []T {
-	if i < 0 {
-		return make([]T, 0)
-	}
-	if i == 0 {
-		return make([]T, 1)
+	if i <= 0 {
+		return make([]T, 0, 10)
 	}
 	return make([]T, 0, i)
 }
@@ -92,9 +89,6 @@ func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], comb
 // you may benefit from specifying the size of the map using your own [InitBatchFn].
 // It is recommended to use [NewMapProcessor] instead if possible.
 func InitMap[K comparable, V any](i int64) map[K]V {
-	if i == 0 {
-		return make(map[K]V, 1)
-	}
 	return make(map[K]V)
 }
 
