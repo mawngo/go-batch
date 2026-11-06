@@ -248,6 +248,13 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 		res = future
 		return batch
 	})
+
+	// The future may not be populated if the context is already canceled - causing the merge function to never run.
+	if res == nil {
+		return &Future[T]{
+			err: ctx.Err(),
+		}
+	}
 	return res
 }
 
