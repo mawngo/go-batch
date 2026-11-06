@@ -90,7 +90,7 @@ var ErrLoadMissingResult = errors.New("empty missing result for key")
 // Call [LoaderSetup.Run] with a handler to create a [Loader] that can load items.
 // By default, the processor operates with the following configuration:
 //   - WithMaxConcurrency: Unset (unlimited)
-//   - WithMaxItem: 1000 (count keys)
+//   - WithMaxItem: 1000 (count pending requests, including duplicates)
 //   - WithMaxWait: 16ms.
 func NewLoader[K comparable, T any]() LoaderSetup[K, T] {
 	s := LoaderSetup[K, T]{
