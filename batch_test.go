@@ -140,30 +140,64 @@ func runSumPutTest(t *testing.T, processor IProcessor[int, []int], sum *int32) {
 
 func TestBatchedMultiGoroutine(t *testing.T) {
 	defer VerifyNoGoroutineLeak(t)
-	sum := int32(0)
-	processor := NewSliceProcessor[int]().
-		Configure(WithMaxItem(10)).
-		Run(summing(&sum))
+	t.Run("Waited", func(t *testing.T) {
+		sum := int32(0)
+		processor := NewSliceProcessor[int]().
+			Configure(WithMaxItem(10)).
+			Run(summing(&sum))
 
-	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	for range 500_000 {
-		wg.Go(func() {
-			processor.Put(ctx, 1)
-		})
-	}
-	for range 50_000 {
-		wg.Go(func() {
-			processor.PutAll(ctx, new1x10Slice())
-		})
-	}
-	if err := processor.Close(ctx); err != nil {
-		t.Fatalf("error closing processor: %v", err)
-	}
-	wg.Wait()
-	if sum != 1_000_000 {
-		t.Fatalf("sum is %d != 2_000_000", sum)
-	}
+		ctx := context.Background()
+		wg := sync.WaitGroup{}
+		for range 500_000 {
+			wg.Go(func() {
+				processor.Put(ctx, 1)
+			})
+		}
+		for range 50_000 {
+			wg.Go(func() {
+				processor.PutAll(ctx, new1x10Slice())
+			})
+		}
+		wg.Wait()
+		if err := processor.Close(ctx); err != nil {
+			t.Fatalf("error closing processor: %v", err)
+		}
+		if sum != 1_000_000 {
+			t.Fatalf("sum is %d != 1_000_000", sum)
+		}
+	})
+
+	t.Run("PartlyCancelled", func(t *testing.T) {
+		sum := int32(0)
+		processor := NewSliceProcessor[int]().
+			Configure(WithMaxItem(10)).
+			Run(summing(&sum))
+
+		expected := atomic.Int32{}
+		ctx := context.Background()
+		wg := sync.WaitGroup{}
+		for range 500_000 {
+			wg.Go(func() {
+				ok := processor.Put(ctx, 1)
+				if ok {
+					expected.Add(1)
+				}
+			})
+		}
+		for range 50_000 {
+			wg.Go(func() {
+				added := processor.PutAll(ctx, new1x10Slice())
+				expected.Add(int32(int64(added)))
+			})
+		}
+		if err := processor.Close(ctx); err != nil {
+			t.Fatalf("error closing processor: %v", err)
+		}
+		wg.Wait()
+		if sum != expected.Load() {
+			t.Fatalf("sum is %d != %d", sum, expected.Load())
+		}
+	})
 }
 
 func TestBatchedSplit(t *testing.T) {

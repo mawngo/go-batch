@@ -81,8 +81,9 @@ type Processor[T any, B any] struct {
 	full chan struct{}
 	// blocked is the internal batch lock.
 	blocked chan struct{}
-	// closed notifies when the processor is closed.
-	closed chan struct{}
+	// closing notifies when the processor is closing.
+	closing chan struct{}
+	closed  chan struct{}
 }
 
 // NewProcessor creates a ProcessorSetup using the specified functions.
@@ -145,6 +146,7 @@ func (p ProcessorSetup[T, B]) Run(process ProcessBatchFn[B], options ...RunOptio
 		process:        process,
 		full:           make(chan struct{}),
 		blocked:        make(chan struct{}, 1),
+		closing:        make(chan struct{}),
 		closed:         make(chan struct{}),
 	}
 
@@ -208,12 +210,12 @@ func (p *Processor[T, B]) continuousDispatch() {
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
 						case <-p.full:
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
-						case p.closed <- struct{}{}:
+						case p.closing <- struct{}{}:
 							return
 						}
 					case <-p.full:
 						p.doProcessAndRelease(p.isBlockWhileProcessing)
-					case p.closed <- struct{}{}:
+					case p.closing <- struct{}{}:
 						return
 					}
 					break
@@ -221,7 +223,7 @@ func (p *Processor[T, B]) continuousDispatch() {
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case p.closed <- struct{}{}:
+			case p.closing <- struct{}{}:
 				return
 			}
 		}
@@ -247,12 +249,12 @@ func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case p.closed <- struct{}{}:
+				case p.closing <- struct{}{}:
 					return
 				}
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case p.closed <- struct{}{}:
+			case p.closing <- struct{}{}:
 				return
 			}
 		}
@@ -278,7 +280,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case p.closed <- struct{}{}:
+				case p.closing <- struct{}{}:
 					return
 				}
 			case <-p.full:
@@ -286,7 +288,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					<-timer.C
 				}
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case p.closed <- struct{}{}:
+			case p.closing <- struct{}{}:
 				if !timer.Stop() {
 					<-timer.C
 				}
@@ -304,7 +306,7 @@ func (p *Processor[T, B]) waitUntilFullDispatch() {
 			select {
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case p.closed <- struct{}{}:
+			case p.closing <- struct{}{}:
 				return
 			}
 		}
@@ -370,12 +372,18 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 		select {
 		case p.full <- struct{}{}:
 			// Block until processed.
+		case <-p.closed:
+			<-p.blocked
 		case <-ctx.Done():
 			// The user canceled the context. They don't want to wait.
 			// We still need to notify the full channel, so we offload it to a goroutine.
 			// There will be no more than 1 extra goroutine at a time, because we still held the lock here.
 			go func() {
-				p.full <- struct{}{}
+				select {
+				case <-p.closed:
+					<-p.blocked
+				case p.full <- struct{}{}:
+				}
 			}()
 		}
 		return true
@@ -464,12 +472,19 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 			case p.full <- struct{}{}:
 				// Block until processed.
 				continue
+			case <-p.closed:
+				<-p.blocked
+				return ok
 			case <-ctx.Done():
 				// The user canceled the context. They don't want to wait.
 				// We still need to notify the full channel, so we offload it to a goroutine.
 				// There will be no more than 1 extra goroutine at a time, because we still held the lock here.
 				go func() {
-					p.full <- struct{}{}
+					select {
+					case <-p.closed:
+						<-p.blocked
+					case p.full <- struct{}{}:
+					}
 				}()
 				return ok
 			}
@@ -497,8 +512,9 @@ func (p *Processor[T, B]) Close(ctx context.Context) error {
 	}
 
 	select {
-	case _, cleanup := <-p.closed:
+	case _, cleanup := <-p.closing:
 		if cleanup {
+			close(p.closing)
 			close(p.closed)
 		}
 		slog.Debug("waiting for leftover batch to finish")
@@ -527,8 +543,9 @@ func (p *Processor[T, B]) Stop(ctx context.Context) error {
 		return nil
 	}
 	select {
-	case _, cleanup := <-p.closed:
+	case _, cleanup := <-p.closing:
 		if cleanup {
+			close(p.closing)
 			close(p.closed)
 			if p.concurrentLimiter != nil {
 				slog.Debug("waiting for concurrent workers to finish")
