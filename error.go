@@ -12,10 +12,16 @@ type Error[B any] struct {
 }
 
 func (e *Error[B]) Error() string {
+	if e.Cause == nil {
+		return ""
+	}
 	return e.Cause.Error()
 }
 
 func (e *Error[B]) String() string {
+	if e.Cause == nil {
+		return ""
+	}
 	return e.Cause.Error()
 }
 
