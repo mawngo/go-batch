@@ -103,6 +103,7 @@ You can implement your own logic to cancel the batch using the item context by c
 as demonstrated in [custom context control example](examples/ctxctrl/main.go).
 
 If you do not want to use `context`, use [version 2 of this library](https://github.com/mawngo/go-batch/tree/v2).
+Version 2 does not have all the features of Version 3. It has some legacy quirks and unfixed minor issues.
 
 ### Waiting for an item to be processed
 
