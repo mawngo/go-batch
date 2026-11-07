@@ -552,7 +552,7 @@ func TestBasicError(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 		Run(summingErr(&sum), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
-			slog.Info("receive error of", slog.Any("ints", ints))
+			slog.Debug("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
 		}))
@@ -574,7 +574,7 @@ func TestRemainError(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 		Run(summingErrHalf(&sum), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
-			slog.Info("receive error of", slog.Any("ints", ints))
+			slog.Debug("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
 		}))
@@ -585,8 +585,8 @@ func TestRemainError(t *testing.T) {
 	if err := processor.Close(); err != nil {
 		t.Fatalf("error closing processor: %v", err)
 	}
-	if sum+(errCnt*2) != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum+(errCnt*2))
+	if sum+errCnt != 1_000_000 {
+		t.Fatalf("sum is %d != 1_000_000", sum+errCnt)
 	}
 }
 
@@ -596,19 +596,19 @@ func TestRemainErrorNoMaxWait(t *testing.T) {
 	processor := NewProcessor(InitSlice[int], AddToSlice[int]).
 		Configure(WithMaxItem(100), WithDisabledDefaultProcessErrorLog()).
 		Run(summingErrHalfSleep(&sum, 200*time.Millisecond), WithBatchErrorHandlers(func(ints []int, i int64, _ error) error {
-			slog.Info("receive error of", slog.Any("ints", ints))
+			slog.Debug("receive error of", slog.Any("ints", ints))
 			atomic.AddInt32(&errCnt, int32(i))
 			return nil
 		}))
 
-	for i := 0; i < 1_000; i++ {
+	for i := 0; i < 1_000_000; i++ {
 		processor.Put(1)
 	}
 	if err := processor.Close(); err != nil {
 		t.Fatalf("error closing processor: %v", err)
 	}
-	if sum+(errCnt*2) != 1_000 {
-		t.Fatalf("sum is %d != 1_000", sum+(errCnt*2))
+	if sum+errCnt != 1_000_000 {
+		t.Fatalf("sum is %d != 1_000_000", sum+(errCnt*2))
 	}
 }
 
@@ -619,13 +619,13 @@ func TestRemainErrorChain(t *testing.T) {
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 		Run(summingErr(&sum), WithBatchErrorHandlers(
 			func(ints []int, i int64, _ error) error {
-				slog.Info("receive error of", slog.Any("ints", ints))
+				slog.Debug("receive error of", slog.Any("ints", ints))
 				half := i / 2
 				atomic.AddInt32(&errCnt, int32(half))
 				return NewErrorWithRemaining(errors.New("continue"), ints[0:half], half)
 			},
 			func(ints []int, count int64, _ error) error {
-				slog.Info("receive error of", slog.Any("ints", ints))
+				slog.Debug("receive error of", slog.Any("ints", ints))
 				for i := int64(0); i < count; i++ {
 					atomic.AddInt32(&errCnt, int32(ints[i]))
 				}
@@ -655,12 +655,12 @@ func TestBasicErrorChain(t *testing.T) {
 		Configure(WithMaxItem(10), WithBlockWhileProcessing(), WithDisabledDefaultProcessErrorLog(), WithMaxWait(Unset)).
 		Run(summingErr(&sum), WithBatchErrorHandlers(
 			func(ints []int, i int64, _ error) error {
-				slog.Info("receive error of", slog.Any("ints", ints))
+				slog.Debug("receive error of", slog.Any("ints", ints))
 				atomic.AddInt32(&errCnt, int32(i))
 				return errors.New("continue")
 			},
 			func(ints []int, count int64, _ error) error {
-				slog.Info("receive error of", slog.Any("ints", ints))
+				slog.Debug("receive error of", slog.Any("ints", ints))
 				for i := int64(0); i < count; i++ {
 					atomic.AddInt32(&errCnt, int32(ints[i]))
 				}
@@ -687,7 +687,10 @@ func summingErrHalf(p *int32) ProcessBatchFn[[]int] {
 	return func(ints []int, i int64) error {
 		if rand.Intn(10) > 6 {
 			half := i / 2
-			return NewErrorWithRemaining(errors.New("random error"), ints[0:half], half)
+			for _, num := range ints[:half] {
+				atomic.AddInt32(p, int32(num))
+			}
+			return NewErrorWithRemaining(errors.New("random error"), ints[half:], i-half)
 		}
 		for _, num := range ints {
 			atomic.AddInt32(p, int32(num))
@@ -701,7 +704,10 @@ func summingErrHalfSleep(p *int32, sleep time.Duration) ProcessBatchFn[[]int] {
 		time.Sleep(sleep)
 		if rand.Intn(10) > 6 {
 			half := i / 2
-			return NewErrorWithRemaining(errors.New("random error"), ints[0:half], half)
+			for _, num := range ints[:half] {
+				atomic.AddInt32(p, int32(num))
+			}
+			return NewErrorWithRemaining(errors.New("random error"), ints[half:], i-half)
 		}
 		for _, num := range ints {
 			atomic.AddInt32(p, int32(num))
