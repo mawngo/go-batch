@@ -213,7 +213,6 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 			future.err = err
 		}
 		close(future.ch)
-		future.ch = nil
 	}
 	return nil
 }
@@ -411,7 +410,6 @@ func (l *Loader[K, T]) StopContext(ctx context.Context) error {
 	for _, future := range l.loading {
 		future.err = context.Canceled
 		close(future.ch)
-		future.ch = nil
 	}
 	clear(l.loading)
 	return err
