@@ -367,8 +367,17 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 		}
 	}
 	if p.maxItem > -1 && p.counter >= p.maxItem {
-		// Block until processed.
-		p.full <- struct{}{}
+		select {
+		case p.full <- struct{}{}:
+			// Block until processed.
+		case <-ctx.Done():
+			// The user canceled the context. They don't want to wait.
+			// We still need to notify the full channel, so we offload it to a goroutine.
+			// There will be no more than 1 extra goroutine at a time, because we still held the lock here.
+			go func() {
+				p.full <- struct{}{}
+			}()
+		}
 		return true
 	}
 	<-p.blocked
@@ -451,9 +460,19 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 			}
 		}
 		if p.maxItem > -1 && p.counter >= p.maxItem {
-			// Block until processed.
-			p.full <- struct{}{}
-			continue
+			select {
+			case p.full <- struct{}{}:
+				// Block until processed.
+				continue
+			case <-ctx.Done():
+				// The user canceled the context. They don't want to wait.
+				// We still need to notify the full channel, so we offload it to a goroutine.
+				// There will be no more than 1 extra goroutine at a time, because we still held the lock here.
+				go func() {
+					p.full <- struct{}{}
+				}()
+				return ok
+			}
 		}
 		<-p.blocked
 	}
