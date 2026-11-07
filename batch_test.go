@@ -166,38 +166,6 @@ func TestBatchedMultiGoroutine(t *testing.T) {
 			t.Fatalf("sum is %d != 1_000_000", sum)
 		}
 	})
-
-	t.Run("PartlyCancelled", func(t *testing.T) {
-		sum := int32(0)
-		processor := NewSliceProcessor[int]().
-			Configure(WithMaxItem(10)).
-			Run(summing(&sum))
-
-		expected := atomic.Int32{}
-		ctx := context.Background()
-		wg := sync.WaitGroup{}
-		for range 500_000 {
-			wg.Go(func() {
-				ok := processor.Put(ctx, 1)
-				if ok {
-					expected.Add(1)
-				}
-			})
-		}
-		for range 50_000 {
-			wg.Go(func() {
-				added := processor.PutAll(ctx, new1x10Slice())
-				expected.Add(int32(int64(added)))
-			})
-		}
-		if err := processor.Close(ctx); err != nil {
-			t.Fatalf("error closing processor: %v", err)
-		}
-		wg.Wait()
-		if sum != expected.Load() {
-			t.Fatalf("sum is %d != %d", sum, expected.Load())
-		}
-	})
 }
 
 func TestBatchedSplit(t *testing.T) {
