@@ -216,5 +216,9 @@ Cancelling the context may* only affect the request waiting to be loaded.
 
 The last context provided to `Load` or `LoadAll` before the batch load is started will be used as the batch context.
 
+## Caveats
+
+See [PROBLEM.md](PROBLEM.md) for a list of unresolved bugs.
+
 ---
 There is a [java version of this library](https://github.com/mawngo/batch4j).
