@@ -29,6 +29,7 @@ type MergeToBatchFn[B any, T any] func(B, T) B
 
 // SplitBatchFn function to split a batch into multiple smaller batches.
 // Accept the current batch and the input count.
+// After split, the ProcessBatchFn will receive the new batch but with the original counter.
 // The SplitBatchFn must never panic.
 type SplitBatchFn[B any] func(B, int64) []B
 
@@ -154,10 +155,21 @@ func InitType[T any](_ int64) T {
 // Deprecated: use [WithBatchSplitSliceEqually] instead.
 func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, _ int64) [][]T {
+		n := int64(len(b))
+		chunks := int64(numberOfChunk)
+		base := n / chunks
+		rem := n % chunks
 		batches := make([][]T, numberOfChunk)
-		for i := 0; i < len(b); i++ {
-			bucket := int64(i) % int64(numberOfChunk)
-			batches[bucket] = append(batches[bucket], b[i])
+		start := int64(0)
+
+		for c := range chunks {
+			size := base
+			if c < rem {
+				size++
+			}
+			end := start + size
+			batches[c] = b[start:end]
+			start = end
 		}
 		return batches
 	}
@@ -167,18 +179,12 @@ func SplitSliceEqually[T any, I size](numberOfChunk I) SplitBatchFn[[]T] {
 // Deprecated: use [WithBatchSplitSliceSizeLimit] instead.
 func SplitSliceSizeLimit[T any, I size](maxSizeOfChunk I) SplitBatchFn[[]T] {
 	return func(b []T, i int64) [][]T {
-		size := i / int64(maxSizeOfChunk)
-		if i%int64(maxSizeOfChunk) != 0 {
-			size++
-		}
-		batches := make([][]T, size)
-		index := 0
-		for batchI := 0; batchI < len(batches); batchI++ {
-			batch := batches[batchI]
-			for ; index < len(b); index++ {
-				batch = append(batch, b[index])
-			}
-			batches[batchI] = batch
+		n := int64(len(b))
+		chunks := (n + int64(maxSizeOfChunk) - 1) / int64(maxSizeOfChunk)
+		batches := make([][]T, 0, chunks)
+		for start := int64(0); start < n; start += int64(maxSizeOfChunk) {
+			end := min(start+int64(maxSizeOfChunk), n)
+			batches = append(batches, b[start:end])
 		}
 		return batches
 	}
