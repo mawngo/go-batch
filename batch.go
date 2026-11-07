@@ -258,12 +258,12 @@ func (p *Processor[T, B]) continuousDispatch() {
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
 						case <-p.full:
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
-						case <-p.closed:
+						case p.closed <- struct{}{}:
 							return
 						}
 					case <-p.full:
 						p.doProcessAndRelease(p.isBlockWhileProcessing)
-					case <-p.closed:
+					case p.closed <- struct{}{}:
 						return
 					}
 					break
@@ -271,7 +271,7 @@ func (p *Processor[T, B]) continuousDispatch() {
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -297,12 +297,12 @@ func (p *Processor[T, B]) waitUntilFullContinuousDispatch() {
 				select {
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case <-p.closed:
+				case p.closed <- struct{}{}:
 					return
 				}
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -328,7 +328,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
 				case <-p.full:
 					p.doProcessAndRelease(p.isBlockWhileProcessing)
-				case <-p.closed:
+				case p.closed <- struct{}{}:
 					return
 				}
 			case <-p.full:
@@ -336,7 +336,7 @@ func (p *Processor[T, B]) timedDispatch() {
 					<-timer.C
 				}
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				if !timer.Stop() {
 					<-timer.C
 				}
@@ -354,7 +354,7 @@ func (p *Processor[T, B]) waitUntilFullDispatch() {
 			select {
 			case <-p.full:
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
-			case <-p.closed:
+			case p.closed <- struct{}{}:
 				return
 			}
 		}
@@ -622,19 +622,26 @@ func (p *Processor[T, B]) CloseContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
-	p.closed <- struct{}{}
-	slog.Debug("waiting for leftover batch to finish")
-	if err := p.DrainContext(ctx); err != nil {
-		return err
-	}
-	if p.concurrentLimiter != nil {
-		slog.Debug("waiting for concurrent workers to finish")
-		err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit)
-		if err != nil {
-			slog.Error("error waiting for concurrent workers to finish", slog.Any("err", err))
+	select {
+	case _, cleanup := <-p.closed:
+		if cleanup {
+			close(p.closed)
+		}
+		slog.Debug("waiting for leftover batch to finish")
+		if err := p.DrainContext(ctx); err != nil {
 			return err
 		}
-		p.concurrentLimiter.Release(p.concurrentLimit)
+		if cleanup {
+			if p.concurrentLimiter != nil {
+				slog.Debug("waiting for concurrent workers to finish")
+				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
+					return err
+				}
+				p.concurrentLimiter.Release(p.concurrentLimit)
+			}
+		}
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	return nil
 }
@@ -645,15 +652,20 @@ func (p *Processor[T, B]) StopContext(ctx context.Context) error {
 	if p.IsDisabled() {
 		return nil
 	}
-	p.closed <- struct{}{}
-	if p.concurrentLimiter != nil {
-		slog.Debug("waiting for concurrent workers to finish")
-		err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit)
-		if err != nil {
-			slog.Error("error waiting for concurrent workers to finish", slog.Any("err", err))
-			return err
+	select {
+	case _, cleanup := <-p.closed:
+		if cleanup {
+			close(p.closed)
+			if p.concurrentLimiter != nil {
+				slog.Debug("waiting for concurrent workers to finish")
+				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
+					return err
+				}
+				p.concurrentLimiter.Release(p.concurrentLimit)
+			}
 		}
-		p.concurrentLimiter.Release(p.concurrentLimit)
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	return nil
 }

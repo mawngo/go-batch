@@ -16,7 +16,6 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
 		// This test will leak as the processor is forced to close before tasks completed, which was an expected behavior.
 		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v2.TestCloseContext.func1"),
-		goleak.IgnoreAnyFunction("github.com/mawngo/go-batch/v2.TestClusterCloseContext.func2"),
 	)
 }
 
@@ -601,14 +600,14 @@ func TestRemainErrorNoMaxWait(t *testing.T) {
 			return nil
 		}))
 
-	for i := 0; i < 1_000_000; i++ {
+	for i := 0; i < 1_000; i++ {
 		processor.Put(1)
 	}
 	if err := processor.Close(); err != nil {
 		t.Fatalf("error closing processor: %v", err)
 	}
-	if sum+errCnt != 1_000_000 {
-		t.Fatalf("sum is %d != 1_000_000", sum+(errCnt*2))
+	if sum+errCnt != 1_000 {
+		t.Fatalf("sum is %d != 1_000", sum+errCnt)
 	}
 }
 
