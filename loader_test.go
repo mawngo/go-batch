@@ -281,3 +281,67 @@ func loadMapInt1(cnt *int32) LoadBatchFn[int, int] {
 		return res, nil
 	}
 }
+
+// TestLoaderConcurrentMapWrite previously, we have a concurrent map writing race bug,
+// so all those tests below are for testing the bug fix.
+func TestLoaderConcurrentMapWrite(t *testing.T) {
+	t.Run("Race", func(t *testing.T) {
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(1000), WithMaxWait(Unset)).
+			Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
+				res := make(map[int]int, len(batch.Keys))
+				for _, k := range batch.Keys {
+					res[k] = k
+				}
+				return res, nil
+			})
+
+		var key atomic.Int64
+		var wg sync.WaitGroup
+		for range 16 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for range 100_000 {
+					_ = loader.Load(int(key.Add(1)))
+				}
+			}()
+		}
+		wg.Wait()
+		_ = loader.Close()
+	})
+
+	t.Run("Panic", func(t *testing.T) {
+		const n = 500_000
+		loader := NewLoader[int, int]().
+			Configure(WithMaxItem(n), WithMaxWait(Unset)).
+			Run(func(LoadKeys[int], int64) (map[int]int, error) {
+				return nil, nil // fast loadFn -> delete loop is the dominant window
+			})
+
+		stop := make(chan struct{})
+		producerDone := make(chan struct{})
+		var key atomic.Int64
+		go func() {
+			defer close(producerDone)
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_ = loader.Load(int(key.Add(1)) + n) // fresh keys, never collide with the batch
+				}
+			}
+		}()
+
+		keys := make([]int, n)
+		for i := range keys {
+			keys[i] = i
+		}
+		loader.LoadAll(keys) // fills the 500k batch -> dispatch -> long delete loop
+
+		close(stop)
+		<-producerDone
+		_ = loader.Close()
+	})
+}

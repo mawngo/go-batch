@@ -152,11 +152,11 @@ type Loader[K comparable, T any] struct {
 	load               LoadBatchFn[K, T]
 	missingResultError error
 
-	lock    sync.RWMutex
+	lock    sync.Mutex
 	loading map[K]*Future[T]
 }
 
-// Configure apply [Option] to this loader setup.
+// Configure to apply [Option] to this loader setup.
 func (p LoaderSetup[K, T]) Configure(options ...Option) LoaderSetup[K, T] {
 	p.setup = p.setup.Configure(options...)
 	return p
@@ -262,26 +262,24 @@ func (l *Loader[K, T]) LoadContext(ctx context.Context, key K) *Future[T] {
 		}
 
 		// Check if the key is already in the batch.
-		l.lock.RLock()
+		l.lock.Lock()
 		if future, ok := l.loading[key]; ok {
-			l.lock.RUnlock()
+			l.lock.Unlock()
 			res = future
 			if future.batchID == batch.id {
 				batch.counter++
 			}
 			return batch
 		}
-		l.lock.RUnlock()
 
-		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
-		// is already locked, so no thread will touch the new key.
 		future := &Future[T]{
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
 		}
+		l.loading[key] = future
+		l.lock.Unlock()
 		batch.Keys = append(batch.Keys, key)
 		batch.counter++
-		l.loading[key] = future
 		res = future
 		return batch
 	})
@@ -349,16 +347,15 @@ func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Futu
 		}
 
 		// Check if the key is already in the batch.
-		l.lock.RLock()
+		l.lock.Lock()
 		if future, ok := l.loading[key]; ok {
-			l.lock.RUnlock()
+			l.lock.Unlock()
 			futures[key] = future
 			if future.batchID == batch.id {
 				batch.counter++
 			}
 			return batch
 		}
-		l.lock.RUnlock()
 
 		// Does not need to lock here, as we already ensure that a batch only contains existing keys, and this function
 		// is already locked, so no thread will touch the new key.
@@ -366,9 +363,10 @@ func (l *Loader[K, T]) LoadAllContext(ctx context.Context, keys []K) map[K]*Futu
 			ch:      make(chan struct{}, 1),
 			batchID: batch.id,
 		}
+		l.loading[key] = future
+		l.lock.Unlock()
 		batch.Keys = append(batch.Keys, key)
 		batch.counter++
-		l.loading[key] = future
 		futures[key] = future
 		return batch
 	})
@@ -450,8 +448,9 @@ func (r *Future[T]) GetContext(ctx context.Context) (T, error) {
 		case <-r.ch:
 			// Don't care, the result is already set.
 		case <-ctx.Done():
+			var empty T
 			// Return the context error.
-			return r.result, ctx.Err()
+			return empty, ctx.Err()
 		}
 	} else {
 		<-r.ch
