@@ -572,7 +572,7 @@ func (p *Processor[T, B]) MergeAllContext(ctx context.Context, items []T, merge 
 			if p.maxItem > -1 {
 				left = min(p.maxItem-p.counter, left)
 			}
-			if left == 0 {
+			if left <= 0 {
 				break
 			}
 
