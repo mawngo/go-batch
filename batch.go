@@ -123,6 +123,8 @@ func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 	case p.blocked <- struct{}{}:
 	case <-ctx.Done():
 		return p.counter, false
+	case <-p.closed:
+		return p.counter, false
 	}
 	defer func() { <-p.blocked }()
 	return p.counter, true
@@ -340,6 +342,8 @@ func (p *Processor[T, B]) Merge(ctx context.Context, item T, merge MergeToBatchF
 	select {
 	case <-ctx.Done():
 		return false
+	case <-p.closed:
+		return false
 	case p.blocked <- struct{}{}:
 	}
 
@@ -438,6 +442,8 @@ func (p *Processor[T, B]) MergeAll(ctx context.Context, items []T, merge MergeTo
 		select {
 		case <-ctx.Done():
 			return ok
+		case <-p.closed:
+			return ok
 		case p.blocked <- struct{}{}:
 		}
 
@@ -515,13 +521,19 @@ func (p *Processor[T, B]) Close(ctx context.Context) error {
 	case _, cleanup := <-p.closing:
 		if cleanup {
 			close(p.closing)
-			close(p.closed)
 		}
 		slog.Debug("waiting for leftover batch to finish")
 		if err := p.Drain(ctx); err != nil {
+			if cleanup {
+				close(p.closed)
+				p.blocked <- struct{}{}
+			}
 			return err
 		}
 		if cleanup {
+			close(p.closed)
+			// Acquire the lock, so every method after this will run on the closed path.
+			p.blocked <- struct{}{}
 			if p.concurrentLimiter != nil {
 				slog.Debug("waiting for concurrent workers to finish")
 				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
@@ -547,6 +559,8 @@ func (p *Processor[T, B]) Stop(ctx context.Context) error {
 		if cleanup {
 			close(p.closing)
 			close(p.closed)
+			// Acquire the lock, so every method after this will run on the closed path.
+			p.blocked <- struct{}{}
 			if p.concurrentLimiter != nil {
 				slog.Debug("waiting for concurrent workers to finish")
 				if err := p.concurrentLimiter.Acquire(ctx, p.concurrentLimit); err != nil {
@@ -588,6 +602,8 @@ func (p *Processor[T, B]) Drain(ctx context.Context) error {
 			p.doProcessConcurrency(batch, counter)
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-p.closed:
+			return nil
 		}
 	}
 	return nil
@@ -611,6 +627,8 @@ func (p *Processor[T, B]) Flush(ctx context.Context) error {
 		p.doProcessAndRelease(p.isBlockWhileProcessing)
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-p.closed:
+		return nil
 	}
 	return nil
 }

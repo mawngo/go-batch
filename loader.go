@@ -26,6 +26,7 @@ type ILoader[K comparable, T any] interface {
 	//
 	// Context can be used to provide a deadline for this method.
 	// Cancelling the context may stop the loader from loading the key.
+	// Calling Get after the loader is stopped will return a future holding [context.Canceled] error.
 	Get(ctx context.Context, key K) (T, error)
 
 	// GetAll registers keys to be loaded and waits for all of them to be loaded.
@@ -33,18 +34,21 @@ type ILoader[K comparable, T any] interface {
 	//
 	// In the case of the context timing out, keys that are loaded will be returned along with an error.
 	// Cancelling the context may stop the loader from loading the key.
+	// Calling GetAll after the loader is stopped will return an empty map.
 	GetAll(ctx context.Context, keys []K) (map[K]T, error)
 
 	// Load registers a key to be loaded and returns a [Future] for waiting for the result.
 	//
 	// Context can be used to provide a deadline for this method.
 	// Cancelling the context may stop the loader from loading the key.
+	// Calling Load after the loader is stopped will return a future holding [context.Canceled] error.
 	Load(ctx context.Context, key K) *Future[T]
 
 	// LoadAll registers keys to be loaded and returns a [Future] for waiting for the combined result.
 	//
 	// Context can be used to provide a deadline for this method.
 	// Cancelling the context may stop the loader from loading the key.
+	// Calling LoadAll after the loader is stopped will return an empty map.
 	LoadAll(ctx context.Context, keys []K) map[K]*Future[T]
 
 	// Close stops the loader.
@@ -203,6 +207,7 @@ func (l *Loader[K, T]) processLoad(batch LoadKeys[K], count int64) error {
 //
 // Context can be used to provide a deadline for this method.
 // Cancelling the context may stop the loader from loading the key.
+// Calling Get after the loader is stopped will return a future holding [context.Canceled] error.
 func (l *Loader[K, T]) Get(ctx context.Context, key K) (T, error) {
 	return l.Load(ctx, key).Get(ctx)
 }
@@ -211,6 +216,7 @@ func (l *Loader[K, T]) Get(ctx context.Context, key K) (T, error) {
 //
 // Context can be used to provide a deadline for this method.
 // Cancelling the context may stop the loader from loading the key.
+// Calling Load after the loader is stopped will return a future holding [context.Canceled] error.
 func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 	var res *Future[T]
 
@@ -242,9 +248,12 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 
 	// The future may not be populated if the context is already canceled - causing the merge function to never run.
 	if res == nil {
-		return &Future[T]{
-			err: ctx.Err(),
+		err := ctx.Err()
+		if err == nil {
+			// The loader is closed.
+			err = context.Canceled
 		}
+		return &Future[T]{err: err}
 	}
 	return res
 }
@@ -255,6 +264,7 @@ func (l *Loader[K, T]) Load(ctx context.Context, key K) *Future[T] {
 // In the case of the context timing out, keys that are loaded will be returned along with an error.
 // Cancelling the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
+// Calling GetAll after the loader is stopped will return an empty map.
 func (l *Loader[K, T]) GetAll(ctx context.Context, keys []K) (map[K]T, error) {
 	futures := l.LoadAll(ctx, keys)
 
@@ -276,6 +286,7 @@ func (l *Loader[K, T]) GetAll(ctx context.Context, keys []K) (map[K]T, error) {
 // Context can be used to provide a deadline for this method.
 // Cancelling the context may stop the loader from loading the key.
 // The result map may not contain all keys if the context is canceled.
+// Calling LoadAll after the loader is stopped will return an empty map.
 func (l *Loader[K, T]) LoadAll(ctx context.Context, keys []K) map[K]*Future[T] {
 	futures := make(map[K]*Future[T], len(keys))
 
