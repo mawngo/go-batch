@@ -343,12 +343,18 @@ func (p *Processor[T, B]) timedDispatch() {
 				}
 			case <-p.full:
 				if !timer.Stop() {
-					<-timer.C
+					select {
+					case <-timer.C:
+					default:
+					}
 				}
 				p.doProcessAndRelease(p.isBlockWhileProcessing)
 			case p.closed <- struct{}{}:
 				if !timer.Stop() {
-					<-timer.C
+					select {
+					case <-timer.C:
+					default:
+					}
 				}
 				return
 			}
