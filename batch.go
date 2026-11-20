@@ -259,7 +259,13 @@ func (p *Processor[T, B]) continuousDispatch() {
 						select {
 						// re-acquire the lock.
 						case p.blocked <- struct{}{}:
-							p.doProcessAndRelease(p.isBlockWhileProcessing)
+							if p.counter == 0 {
+								// Stale wakeup: the token was left over from a direct-path
+								// processing. Discard it and wait again.
+								<-p.blocked
+							} else {
+								p.doProcessAndRelease(p.isBlockWhileProcessing)
+							}
 						case <-p.full:
 							p.doProcessAndRelease(p.isBlockWhileProcessing)
 						case p.closed <- struct{}{}:

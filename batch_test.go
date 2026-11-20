@@ -93,6 +93,45 @@ func TestBatchedMultiGoroutine(t *testing.T) {
 	}
 }
 
+func TestAggressiveModeStaleNotEmptyToken(t *testing.T) {
+	started := make(chan struct{}) // process([1]) is running, lock is released
+	proceed := make(chan struct{}) // releases process([1])
+	emptyCall := make(chan struct{}, 1)
+
+	var calls atomic.Int32
+	processor := NewSliceProcessor[int]().
+		Configure(WithAggressiveMode()).
+		Run(func(b []int, _ int64) error {
+			if len(b) == 0 {
+				select {
+				case emptyCall <- struct{}{}:
+				default:
+				}
+				return nil
+			}
+			if calls.Add(1) == 1 {
+				// Only block the first non-empty call.
+				started <- struct{}{}
+				<-proceed
+			}
+			return nil
+		})
+
+	defer processor.Close()
+
+	processor.Put(1) // dispatcher consumes notEmpty, starts process([1])
+	<-started        // now process([1]) is running and the lock is free
+	processor.Put(2) // buffers a token in notEmpty while dispatcher is busy
+	close(proceed)   // let process([1]) return
+
+	select {
+	case <-emptyCall:
+		t.Fatal("process called with an empty batch due to stale notEmpty token")
+	case <-time.After(time.Second):
+		// OK: no empty-batch call observed
+	}
+}
+
 func TestBatchedSplit(t *testing.T) {
 	maxes := []int{1, 2, 5, 8, 10, 18, 20, 111}
 	for _, m := range maxes {
