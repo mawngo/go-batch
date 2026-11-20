@@ -579,7 +579,7 @@ func (p *Processor[T, B]) Stop(ctx context.Context) error {
 }
 
 // Drain forces processing batches until there is no leftover batch.
-// This method always processes the batch on the caller thread.
+// This method may process the batch on the caller thread, depending on concurrency settings.
 // ctx can be used to provide a deadline for this method.
 func (p *Processor[T, B]) Drain(ctx context.Context) error {
 	if p.IsDisabled() {
