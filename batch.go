@@ -40,6 +40,8 @@ type IProcessor[T any, B any] interface {
 	MergeAll(ctx context.Context, items []T, merge MergeToBatchFn[B, T]) int
 
 	// ApproxItemCount returns the number of current items in the processor, approximately.
+	//
+	// Deprecated: Use ItemCount instead.
 	ApproxItemCount() int64
 	// ItemCount returns the number of current items in the processor.
 	// If the context is canceled, then this method will return an approximate item count and false.
@@ -131,7 +133,8 @@ func (p *Processor[T, B]) ItemCount(ctx context.Context) (int64, bool) {
 }
 
 // ApproxItemCount returns the number of current items in the processor.
-// This method does not block, so the counter may not be accurate.
+//
+// Deprecated: Use ItemCount instead - this method can cause race problems.
 func (p *Processor[T, B]) ApproxItemCount() int64 {
 	return p.counter
 }
