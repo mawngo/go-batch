@@ -71,6 +71,8 @@ type IProcessor[T any, B any] interface {
 	PeekContext(ctx context.Context, reader ProcessBatchFn[B]) error
 
 	// ApproxItemCount return number of current items in the processor, approximately.
+	//
+	// Deprecated: Use ItemCount instead.
 	ApproxItemCount() int64
 	// ItemCount return number of current items in the processor.
 	ItemCount() int64
@@ -178,6 +180,8 @@ func (p *Processor[T, B]) ItemCountContext(ctx context.Context) (int64, bool) {
 
 // ApproxItemCount return number of current items in processor.
 // This method does not block, so the counter may not be accurate.
+//
+// Deprecated: Use ItemCount instead - this method can cause race problems.
 func (p *Processor[T, B]) ApproxItemCount() int64 {
 	return p.counter
 }
