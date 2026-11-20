@@ -675,7 +675,7 @@ func (p *Processor[T, B]) StopContext(ctx context.Context) error {
 }
 
 // DrainContext force process batch until the batch is empty.
-// This method always processes the batch on the caller thread.
+// This method may process the batch on the caller thread, depending on concurrency settings.
 // ctx can be used to provide a deadline for this method.
 func (p *Processor[T, B]) DrainContext(ctx context.Context) error {
 	if p.IsDisabled() {
