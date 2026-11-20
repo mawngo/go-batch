@@ -67,6 +67,7 @@ func WithAggressiveMode() Option {
 }
 
 // WithMaxCloseWait set the max waiting time when closing the processor.
+//
 // Deprecated: use [Processor.CloseContext] for deadline control.
 func WithMaxCloseWait(wait time.Duration) Option {
 	return func(p *processorConfig) {
