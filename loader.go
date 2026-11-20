@@ -80,7 +80,8 @@ type LoadKeys[K any] struct {
 // If the result does not contain all keys and the error is nil, the error of missing keys
 // will be set to [ErrLoadMissingResult] or any configured error.
 //
-// The [LoadBatchFn] should not modify the key content.
+// The [LoadBatchFn] must not modify the key content.
+// The [LoadBatchFn] must NEVER panic - this would cause deadlocks on all pending futures and Get call managed by it.
 type LoadBatchFn[K comparable, T any] func(batch LoadKeys[K], count int64) (map[K]T, error)
 
 // ErrLoadMissingResult is the default error for keys that are missing in the result.

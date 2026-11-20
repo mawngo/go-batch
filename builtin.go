@@ -31,6 +31,7 @@ type CountBatchFn[B any] func(B) int64
 
 // ProcessBatchFn function to process a batch.
 // Accept the current batch and the input count.
+// The [ProcessBatchFn] should never panic.
 type ProcessBatchFn[B any] func(B, int64) error
 
 // RecoverBatchFn function to handle an error batch.
