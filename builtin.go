@@ -35,6 +35,7 @@ type SplitBatchFn[B any] func(B, int64) []B
 
 // ProcessBatchFn function to process a batch.
 // Accept the current batch and the input count.
+// The [ProcessBatchFn] should never panic.
 type ProcessBatchFn[B any] func(B, int64) error
 
 // RecoverBatchFn function to handle an error batch.
