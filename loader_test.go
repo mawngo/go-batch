@@ -305,7 +305,7 @@ func loadMapInt1(cnt *int32) LoadBatchFn[int, int] {
 // TestLoaderConcurrentMapWrite previously, we have a concurrent map writing race bug,
 // so all those tests below are for testing the bug fix.
 func TestLoaderConcurrentMapWrite(t *testing.T) {
-	t.Run("Race", func(t *testing.T) {
+	t.Run("Race", func(_ *testing.T) {
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(1000), WithMaxWait(Unset)).
 			Run(func(batch LoadKeys[int], _ int64) (map[int]int, error) {
@@ -330,7 +330,7 @@ func TestLoaderConcurrentMapWrite(t *testing.T) {
 		_ = loader.Close(ctx)
 	})
 
-	t.Run("Panic", func(t *testing.T) {
+	t.Run("Panic", func(_ *testing.T) {
 		const n = 500_000
 		loader := NewLoader[int, int]().
 			Configure(WithMaxItem(n), WithMaxWait(Unset)).

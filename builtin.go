@@ -88,7 +88,7 @@ func NewSelfMapProcessor[T any, K comparable](keyExtractor ExtractFn[T, K], comb
 // and [WithMaxItem] to a reasonable value,
 // you may benefit from specifying the size of the map using your own [InitBatchFn].
 // It is recommended to use [NewMapProcessor] instead if possible.
-func InitMap[K comparable, V any](i int64) map[K]V {
+func InitMap[K comparable, V any](_ int64) map[K]V {
 	return make(map[K]V)
 }
 
